@@ -264,8 +264,8 @@ const AdminBadge = () => {
     { nome: 'Quiz Master', icon: '🧠', descrizione: 'Supera 5 quiz con punteggio > 80%', assegnati: 12, colore: 'bg-purple-100' },
     { nome: 'Team Player', icon: '🤝', descrizione: 'Partecipa a una sfida di squadra', assegnati: 18, colore: 'bg-green-100' },
     { nome: 'Blockchain Expert', icon: '⛓️', descrizione: 'Completa il modulo Blockchain', assegnati: 0, colore: 'bg-indigo-100' },
-    { nome: 'Innovatore', icon: '💡', descrizione: 'Proponi un idea allhackathon', assegnati: 0, colore: 'bg-amber-100' },
-    { nome: 'Campione', icon: '🏆', descrizione: 'Vinci lhackathon finale', assegnati: 0, colore: 'bg-yellow-100' },
+    { nome: 'Innovatore', icon: '💡', descrizione: 'Proponi un idea all hackathon', assegnati: 0, colore: 'bg-amber-100' },
+    { nome: 'Campione', icon: '🏆', descrizione: 'Vinci l hackathon finale', assegnati: 0, colore: 'bg-yellow-100' },
   ];
 
   return (
@@ -470,13 +470,15 @@ const ITSLearningPlatform: React.FC = () => {
   const [userRole, setUserRole] = useState<'student' | 'admin'>('student');
   const [activeModule, setActiveModule] = useState<string | null>(null);
 
+  const isAdmin = userRole === 'admin';
+
   // Render del modulo attivo
   const renderActiveModule = () => {
     switch (activeModule) {
       case 'agrifoodtech':
-        return <ModuloAgrifoodTech onBack={() => setActiveModule(null)} />;
+        return <ModuloAgrifoodTech onBack={() => setActiveModule(null)} isAdmin={isAdmin} />;
       case 'trend-tecnologici':
-        return <ModuloTrendTecnologici onBack={() => setActiveModule(null)} />;
+        return <ModuloTrendTecnologici onBack={() => setActiveModule(null)} isAdmin={isAdmin} />;
       default:
         return null;
     }
