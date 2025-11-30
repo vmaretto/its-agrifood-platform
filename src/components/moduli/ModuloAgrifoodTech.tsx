@@ -5,7 +5,7 @@ import React, { useState, useEffect } from 'react';
 // ============================================
 
 // Animated Counter Component
-const AnimatedCounter = ({ end, duration = 2000, suffix = '', prefix = '' }) => {
+const AnimatedCounter = ({ end, duration = 2000, suffix = '', prefix = '' }: { end: number; duration?: number; suffix?: string; prefix?: string }) => {
   const [count, setCount] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
 
