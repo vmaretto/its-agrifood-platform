@@ -1319,6 +1319,15 @@ export default function ModuloAgrifoodTechCompleto({ onBack, isAdmin = false, us
         <div className="max-w-6xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
+              {onBack && (
+                <button
+                  onClick={onBack}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  ← Torna al percorso
+                </button>
+              )}
+              <div className="h-6 w-px bg-gray-300"></div>
               <span className="text-2xl">📚</span>
               <div>
                 <div className="font-semibold text-gray-800">Tendenze AgrifoodTech</div>
