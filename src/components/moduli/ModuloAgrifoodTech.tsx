@@ -1281,7 +1281,7 @@ const slidesData = [
 // COMPONENTE PRINCIPALE
 // ============================================
 
-export default function ModuloAgrifoodTechCompleto({ onBack }: { onBack?: () => void }) {
+export default function ModuloAgrifoodTechCompleto({ onBack, isAdmin = false, userRole = 'student', setUserRole }: { onBack?: () => void; isAdmin?: boolean; userRole?: 'student' | 'admin'; setUserRole?: (role: 'student' | 'admin') => void }) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeTab, setActiveTab] = useState('contenuto');
   const [showQuiz, setShowQuiz] = useState(false);
@@ -1326,6 +1326,20 @@ export default function ModuloAgrifoodTechCompleto({ onBack }: { onBack?: () => 
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {/* Toggle Ruolo */}
+              {setUserRole && (
+                <button
+                  onClick={() => setUserRole(userRole === 'student' ? 'admin' : 'student')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    userRole === 'admin'
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  <span>{userRole === 'admin' ? '👨‍🏫' : '👨‍🎓'}</span>
+                  <span>{userRole === 'admin' ? 'Docente' : 'Studente'}</span>
+                </button>
+              )}
               <div className="text-sm text-gray-500">Slide {currentSlide + 1} di {slidesData.length}</div>
               <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
                 <div className="h-full bg-emerald-500 transition-all duration-300" style={{ width: `${progress}%` }} />

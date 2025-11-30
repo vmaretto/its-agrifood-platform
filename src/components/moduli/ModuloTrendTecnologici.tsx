@@ -1161,7 +1161,7 @@ Cotarella: "Queste tecnologie possono diffondere la cultura del vino tra i giova
 // COMPONENTE PRINCIPALE
 // ============================================
 
-export default function ModuloTrendTecnologici({ onBack, isAdmin = false }: { onBack?: () => void; isAdmin?: boolean }) {
+export default function ModuloTrendTecnologici({ onBack, isAdmin = false, userRole = 'student', setUserRole }: { onBack?: () => void; isAdmin?: boolean; userRole?: 'student' | 'admin'; setUserRole?: (role: 'student' | 'admin') => void }) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeTab, setActiveTab] = useState('contenuto');
   const [showSpeechPanel, setShowSpeechPanel] = useState(false);
@@ -1544,6 +1544,21 @@ export default function ModuloTrendTecnologici({ onBack, isAdmin = false }: { on
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {/* Toggle Ruolo */}
+              {setUserRole && (
+                <button
+                  onClick={() => setUserRole(userRole === 'student' ? 'admin' : 'student')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                    userRole === 'admin'
+                      ? 'bg-purple-100 text-purple-700'
+                      : 'bg-gray-100 text-gray-600'
+                  }`}
+                >
+                  <span>{userRole === 'admin' ? '👨‍🏫' : '👨‍🎓'}</span>
+                  <span>{userRole === 'admin' ? 'Docente' : 'Studente'}</span>
+                </button>
+              )}
+
               {/* Pulsante Note Docente - solo per admin */}
               {isAdmin && (
                 <button

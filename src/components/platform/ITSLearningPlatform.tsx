@@ -476,9 +476,9 @@ const ITSLearningPlatform: React.FC = () => {
   const renderActiveModule = () => {
     switch (activeModule) {
       case 'agrifoodtech':
-        return <ModuloAgrifoodTech onBack={() => setActiveModule(null)} isAdmin={isAdmin} />;
+        return <ModuloAgrifoodTech onBack={() => setActiveModule(null)} isAdmin={isAdmin} userRole={userRole} setUserRole={setUserRole} />;
       case 'trend-tecnologici':
-        return <ModuloTrendTecnologici onBack={() => setActiveModule(null)} isAdmin={isAdmin} />;
+        return <ModuloTrendTecnologici onBack={() => setActiveModule(null)} isAdmin={isAdmin} userRole={userRole} setUserRole={setUserRole} />;
       default:
         return null;
     }
