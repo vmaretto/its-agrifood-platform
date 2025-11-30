@@ -725,12 +725,452 @@ const slidesData = [
 // COMPONENTE PRINCIPALE
 // ============================================
 
-export default function ModuloTrendTecnologici({ onBack }: { onBack?: () => void }) {
+
+// ============================================
+// SPEECH DATA PER IL DOCENTE
+// ============================================
+
+const speechData = [
+  {
+    slideId: 1,
+    titolo: 'Panoramica Trend Tecnologici 2026+',
+    durata: '8-10 min',
+    obiettivi: [
+      'Presentare il quadro generale delle tecnologie emergenti',
+      'Mostrare le interconnessioni tra le diverse tecnologie',
+      'Preparare il terreno per gli approfondimenti successivi'
+    ],
+    speech: `Benvenuti a questo modulo sui trend tecnologici che plasmeranno il futuro dal 2026 in poi.
+
+🎯 APERTURA (2 min)
+Iniziate mostrando i 4 numeri chiave nella slide:
+- 80% delle aziende ha già adottato soluzioni AI
+- 240 miliardi di euro: il mercato dei Digital Twin nel 2032
+- 93% degli agricoltori europei usa almeno un software
+- 130 miliardi di euro: il contributo del vino al PIL UE
+
+💡 CONCETTO CHIAVE (3 min)
+"Queste tecnologie non viaggiano da sole. L'AI potenzia l'IoT, l'IoT alimenta i Digital Twin, la blockchain certifica i dati raccolti. È un ecosistema integrato."
+
+📊 INTERAZIONE (2 min)
+Chiedete alla classe: "Quanti di voi hanno già usato ChatGPT o un altro strumento AI?"
+
+▶️ RISORSE (2 min)
+Mostrate il tab Video e suggerite di guardare a casa il report McKinsey.`,
+    note: [
+      'Questo è il modulo introduttivo, mantenere un ritmo dinamico',
+      'Non entrare troppo nel dettaglio tecnico',
+      'Verificare che tutti abbiano capito il concetto di ecosistema tecnologico'
+    ],
+    domandeSuggerite: [
+      'Quale tecnologia pensate avrà più impatto sul settore agroalimentare?',
+      'Avete già sentito parlare di AI generativa?',
+      'Conoscete esempi di aziende che usano queste tecnologie?'
+    ]
+  },
+  {
+    slideId: 2,
+    titolo: 'AI Avanzata e Agenti Autonomi',
+    durata: '12-15 min',
+    obiettivi: [
+      'Spiegare la differenza tra AI tradizionale e AI generativa',
+      'Introdurre il concetto di Agentic AI',
+      'Discutere implicazioni etiche e governance'
+    ],
+    speech: `L'intelligenza artificiale sta vivendo una trasformazione epocale.
+
+🎯 APERTURA (3 min)
+"Fino a ieri l'AI sapeva fare UNA cosa bene. Oggi l'AI generativa può creare, ragionare, pianificare."
+
+💡 CONCETTO CHIAVE (4 min)
+Cos'è l'Agentic AI? Un assistente che può pianificare azioni, eseguirle autonomamente, e correggersi.
+
+Esempio: Un agente AI per un'azienda vinicola potrebbe monitorare meteo, prevedere malattie, ordinare trattamenti, programmare droni.
+
+⚠️ GOVERNANCE (3 min)
+L'AI Act europeo è la prima legge al mondo che regola l'intelligenza artificiale.
+
+🧠 QUIZ (3 min)
+Fate il quiz sulla definizione di Agentic AI.`,
+    note: [
+      'Il quiz è fondamentale per verificare la comprensione',
+      'Enfatizzare sempre le applicazioni pratiche nel settore food'
+    ],
+    domandeSuggerite: [
+      'Quali rischi vedete nell\'uso di AI autonome in agricoltura?',
+      'Come garantireste che le decisioni dell\'AI siano corrette?'
+    ]
+  },
+  {
+    slideId: 3,
+    titolo: 'IoT e Gemelli Digitali',
+    durata: '12-15 min',
+    obiettivi: [
+      'Spiegare cosa sono IoT e Digital Twin',
+      'Mostrare casi d\'uso concreti',
+      'Collegare al tema della connettività 5G/6G'
+    ],
+    speech: `Entriamo nel mondo dei sensori e delle repliche digitali.
+
+🎯 APERTURA (3 min)
+Un vigneto di precisione può avere: sensori ogni 50 metri, stazioni meteo, trappole smart, droni multispettrali.
+
+💡 DIGITAL TWIN (5 min)
+Il gemello digitale permette di simulare scenari, prevedere problemi, ottimizzare risorse.
+
+Destination Earth: L'UE sta creando un gemello digitale dell'intero pianeta!
+
+📡 CONNETTIVITÀ (3 min)
+5G Advanced, 6G in sviluppo, satelliti LEO per copertura globale.`,
+    note: [
+      'Il concetto di Digital Twin può essere difficile da visualizzare',
+      'Usate analogie: È come avere un videogioco del vostro vigneto'
+    ],
+    domandeSuggerite: [
+      'Quale sarebbe il valore di un gemello digitale per un\'azienda vinicola?',
+      'Come risolvereste il problema della connettività in zone rurali?'
+    ]
+  },
+  {
+    slideId: 4,
+    titolo: 'Blockchain e Infrastrutture Decentralizzate',
+    durata: '10-12 min',
+    obiettivi: [
+      'Demistificare la blockchain oltre le criptovalute',
+      'Mostrare applicazioni concrete nel food',
+      'Introdurre tokenizzazione e identità digitale'
+    ],
+    speech: `Blockchain: molto più delle criptovalute!
+
+🎯 APERTURA (2 min)
+La blockchain è una TECNOLOGIA, le criptovalute sono solo UNA applicazione.
+
+💡 APPLICAZIONI FOOD (4 min)
+1. SUPPLY CHAIN - tracciare dalla vigna allo scaffale
+2. VALUTE DIGITALI - Euro digitale nel 2026
+3. TOKENIZZAZIONE - asset reali in token
+4. IDENTITÀ DIGITALE - eIDAS 2.0
+
+⚡ SOSTENIBILITÀ (2 min)
+Le nuove blockchain usano Proof-of-Stake, consumano 99% in meno di energia.`,
+    note: [
+      'Evitare di entrare troppo nei tecnicismi crittografici',
+      'Enfatizzare sempre i benefici pratici per la filiera'
+    ],
+    domandeSuggerite: [
+      'Quale problema della filiera risolvereste con la blockchain?',
+      'Come spieghereste la blockchain a un agricoltore?'
+    ]
+  },
+  {
+    slideId: 5,
+    titolo: 'AR, VR e Metaverso',
+    durata: '10-12 min',
+    obiettivi: [
+      'Distinguere AR, VR e Metaverso',
+      'Mostrare applicazioni business reali',
+      'Valutare realisticamente lo stato di maturità'
+    ],
+    speech: `Realtà virtuale e aumentata: hype o realtà?
+
+🎯 APERTURA (2 min)
+Chi ha provato un visore VR? Chi ha usato un filtro AR su Instagram?
+
+💡 DEFINIZIONI (3 min)
+- AR: sovrappone elementi digitali al mondo reale
+- VR: ti immerge completamente in un mondo digitale
+- Metaverso: spazi virtuali condivisi e persistenti
+
+📊 STATO DI MATURITÀ (2 min)
+Siamo a 2 su 5. Ancora in fase sperimentale per le applicazioni business.
+
+⚠️ NOTA REALISTICA
+Non credete all'hype: il metaverso di Meta ha deluso. Ma le applicazioni di nicchia funzionano.`,
+    note: [
+      'Essere realistici sullo stato di maturità',
+      'Enfatizzare le applicazioni B2B più delle consumer'
+    ],
+    domandeSuggerite: [
+      'Usereste la VR per formare il personale?',
+      'Pensate che il metaverso avrà successo?'
+    ]
+  },
+  {
+    slideId: 6,
+    titolo: 'Robotica e Automazione Avanzata',
+    durata: '12-15 min',
+    obiettivi: [
+      'Distinguere robotica fisica e software',
+      'Mostrare applicazioni in agricoltura',
+      'Discutere impatti su lavoro e competenze'
+    ],
+    speech: `I robot stanno uscendo dalle fabbriche!
+
+💡 DUE TIPI DI ROBOT (3 min)
+1. ROBOTICA FISICA - bracci, trattori autonomi, droni, umanoidi
+2. ROBOTICA SOFTWARE - RPA, agenti AI
+
+📊 APPLICAZIONI (5 min)
+- Robot industriali (cobot collaborativi)
+- Robot agricoli (trattori autonomi, vendemmia)
+- Robot di servizio (magazzini, ospedali)
+- Umanoidi (Tesla Optimus - sperimentali)
+
+🧠 QUIZ (3 min)
+Risposta corretta: sicurezza + operatività 24/7
+
+⚠️ IMPATTO SUL LAVORO (2 min)
+I robot sostituiscono lavori ripetitivi ma creano nuovi lavori.`,
+    note: [
+      'Il quiz è importante per verificare la comprensione',
+      'Enfatizzare la sicurezza come driver principale'
+    ],
+    domandeSuggerite: [
+      'Quali lavori agricoli automatizzereste per primi?',
+      'Vedete rischi etici nell\'automazione?'
+    ]
+  },
+  {
+    slideId: 7,
+    titolo: 'Quantum Computing',
+    durata: '8-10 min',
+    obiettivi: [
+      'Spiegare in modo semplice il quantum computing',
+      'Mostrare applicazioni potenziali',
+      'Essere realistici sulla timeline'
+    ],
+    speech: `Il quantum computing: la frontiera più lontana.
+
+💡 ANALOGIA SEMPLICE (3 min)
+Computer classico: un labirinto che esplorate un corridoio alla volta.
+Computer quantistico: esplorate TUTTI i corridoi contemporaneamente.
+
+📊 STATO ATTUALE (2 min)
+- Maturità: Frontier Innovation
+- Timeline: 2026-2030 per Quantum Advantage
+Siamo ancora nei laboratori.
+
+🔬 APPLICAZIONI POTENZIALI (2 min)
+Ottimizzazione, crittografia, drug discovery, nuovi materiali.
+
+⚠️ NOTA REALISTICA
+Per l'agroalimentare, il quantum è ancora lontano. Ma tra 10 anni potrebbe ottimizzare intere supply chain.`,
+    note: [
+      'Non entrare troppo nei dettagli fisici',
+      'Essere molto onesti sulla timeline'
+    ],
+    domandeSuggerite: [
+      'Quale applicazione vi sembra più promettente?',
+      'Come vi preparereste al rischio quantistico per la crittografia?'
+    ]
+  },
+  {
+    slideId: 8,
+    titolo: 'Tecnologie per il Settore Agroalimentare',
+    durata: '15-18 min',
+    obiettivi: [
+      'Collegare le tecnologie al settore specifico',
+      'Mostrare dati concreti sull\'adozione in Europa',
+      'Evidenziare il divario digitale'
+    ],
+    speech: `Ora applichiamo tutto al nostro settore: l'agroalimentare.
+
+🎯 APERTURA (3 min)
+Dati JRC (Centro Ricerca UE):
+- 93% agricoltori usa almeno un software
+- 79% usa tech digitali per le colture
+- MA solo 25% usa automazione avanzata!
+
+💡 IL DIVARIO (4 min)
+Le grandi aziende del Nord Europa sono super tecnologiche.
+Le piccole aziende del Sud restano indietro.
+
+📊 AGRICOLTURA DI PRECISIONE (5 min)
+1. Sensori IoT → -20-30% input
+2. Droni multispettrali → interventi mirati
+3. AI Decision Support → +15% efficienza
+4. Irrigazione smart → -30-40% acqua
+
+🇪🇺 POLITICHE UE (3 min)
+Banda larga rurale, data space agricoli, formazione digitale, incentivi PAC.`,
+    note: [
+      'Questa slide fa da ponte tra teoria e pratica',
+      'Enfatizzare il ruolo delle politiche pubbliche'
+    ],
+    domandeSuggerite: [
+      'Quali barriere vedete per l\'adozione nelle aziende italiane?',
+      'Quali incentivi servirebbero?'
+    ]
+  },
+  {
+    slideId: 9,
+    titolo: 'Trend Tecnologici nel Settore Vitivinicolo',
+    durata: '10-12 min',
+    obiettivi: [
+      'Introdurre le specificità del settore vino',
+      'Mostrare i numeri del mercato',
+      'Anticipare i temi delle prossime slide'
+    ],
+    speech: `Entriamo nel mondo del vino: tradizione e innovazione.
+
+🎯 APERTURA (2 min)
+4 numeri chiave:
+- 3 milioni di posti lavoro UE
+- 130 miliardi € PIL
+- 1.3 miliardi € perdite frodi/anno
+- 20% superficie bio Italia
+
+💡 TRADIZIONE vs INNOVAZIONE (3 min)
+La sfida: innovare senza perdere l'anima.
+
+📊 4 AREE TECNOLOGICHE (4 min)
+1. VITICOLTURA 4.0 (slide 10)
+2. CANTINA SMART
+3. TRACCIABILITÀ (slide 11)
+4. MARKETING DIGITALE (slide 12)
+
+🍇 IL PROBLEMA FRODI (2 min)
+1.3 miliardi persi ogni anno. La tecnologia può risolvere questo problema?`,
+    note: [
+      'Questa è una slide di transizione',
+      'Creare curiosità per le slide successive'
+    ],
+    domandeSuggerite: [
+      'Conoscete casi di frodi nel settore vinicolo?',
+      'Come bilancereste tradizione e innovazione?'
+    ]
+  },
+  {
+    slideId: 10,
+    titolo: 'Viticoltura di Precisione e Automazione',
+    durata: '15-18 min',
+    obiettivi: [
+      'Mostrare tecnologie concrete per il vigneto',
+      'Presentare il robot Black Shire come case study',
+      'Far fare il quiz'
+    ],
+    speech: `La viticoltura di precisione: curare ogni pianta individualmente.
+
+💡 GLI STRUMENTI (5 min)
+1. Sensori IoT → Allerta malattie PRIMA che appaiano
+2. Droni multispettrali → Trattamenti solo dove serve
+3. DSS viticoli → -30% trattamenti chimici
+4. Vendemmia predittiva → Qualità superiore
+
+🤖 ROBOT BLACK SHIRE (5 min)
+Ha vinto il premio innovazione a Enovitis 2025.
+- Motore ibrido 75 CV
+- Lavora 24/7
+- Sensori Lidar e videocamere
+- Rileva ostacoli e persone
+
+⚠️ SICUREZZA (2 min)
+Ogni anno muoiono agricoltori per ribaltamento. Un robot elimina questo rischio.
+
+🧠 QUIZ (3 min)
+Risposta: Ridurre input mantenendo o migliorando la qualità`,
+    note: [
+      'Il quiz è fondamentale',
+      'Il robot Black Shire è un ottimo caso italiano'
+    ],
+    domandeSuggerite: [
+      'Quanto costerebbe implementare queste tecnologie?',
+      'Quali resistenze culturali ci sono?'
+    ]
+  },
+  {
+    slideId: 11,
+    titolo: 'Tracciabilità e Smart Wine Labels',
+    durata: '12-15 min',
+    obiettivi: [
+      'Spiegare TraceWINDU e Wineability',
+      'Mostrare come funziona un\'etichetta intelligente',
+      'Collegare tracciabilità a normativa UE'
+    ],
+    speech: `Dal vigneto al calice: tracciare ogni bottiglia.
+
+💡 DUE PROGETTI CHIAVE (6 min)
+
+TRACEWINDU (Progetto UE)
+Combina analisi chimiche isotopiche + blockchain + QR code.
+Un passaporto digitale per ogni vino europeo.
+
+WINEABILITY (Italia)
+ID digitale per ogni bottiglia, tag NFC per vini pregiati, wallet digitale.
+
+📊 4 BENEFICI (3 min)
+1. Anti-contraffazione
+2. Storytelling
+3. Compliance (regolamento UE 2023)
+4. Engagement consumatore
+
+📜 NORMATIVA (2 min)
+Dal 2023 l'UE richiede info nutrizionali via QR. È un'opportunità!`,
+    note: [
+      'Se possibile, mostrare un vero QR code',
+      'Enfatizzare l\'opportunità della normativa'
+    ],
+    domandeSuggerite: [
+      'Scannerizzate spesso i QR code dei prodotti?',
+      'Paghereste di più per vino con tracciabilità blockchain?'
+    ]
+  },
+  {
+    slideId: 12,
+    titolo: 'Marketing Immersivo e Metaverso del Vino',
+    durata: '12-15 min',
+    obiettivi: [
+      'Mostrare casi concreti di marketing innovativo',
+      'Presentare Cotarella, TellyWine, Crurated',
+      'Valutare potenzialità e limiti'
+    ],
+    speech: `Il vino incontra la realtà virtuale e il metaverso.
+
+💡 4 ESPERIENZE INNOVATIVE (8 min)
+
+1. CANTINA COTARELLA DIGITALE
+Prima cantina italiana nel metaverso (2023). VR + Digital Twin + AI.
+
+2. TELLYWINE
+Lo Shazam del vino. Inquadri l'etichetta, AI ti dà info complete.
+
+3. ETICHETTE AR (Cantina Orsogna)
+L'etichetta prende vita! Animazioni 3D, video, storia.
+
+4. CRURATED NFT
+Cantina virtuale su NFT. Compri vino, ricevi NFT di proprietà.
+
+📊 IMPATTI (2 min)
+Storytelling, trasparenza, sostenibilità (meno viaggi), giovani.
+
+⚠️ NOTA FINALE
+Cotarella: "Queste tecnologie possono diffondere la cultura del vino tra i giovani."`,
+    note: [
+      'Questa è la slide conclusiva, lasciare tempo per domande',
+      'Collegare al tema della responsabilità nel consumo'
+    ],
+    domandeSuggerite: [
+      'Quale esperienza vi ha colpito di più?',
+      'Usereste un\'app come TellyWine?',
+      'Come portereste la vostra cantina nel metaverso?'
+    ]
+  }
+];
+
+// ============================================
+// COMPONENTE PRINCIPALE
+// ============================================
+
+export default function ModuloTrendTecnologici({ onBack, isAdmin = false }: { onBack?: () => void; isAdmin?: boolean }) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeTab, setActiveTab] = useState('contenuto');
+  const [showSpeechPanel, setShowSpeechPanel] = useState(false);
 
   const slide = slidesData[currentSlide];
   const progress = ((currentSlide + 1) / slidesData.length) * 100;
+  
+  // Trova lo speech per la slide corrente
+  const currentSpeech = speechData.find(s => s.slideId === slide.id);
 
   const tabs = [
     { id: 'contenuto', label: 'Contenuto', icon: '📚' },
@@ -743,7 +1183,6 @@ export default function ModuloTrendTecnologici({ onBack }: { onBack?: () => void
   useEffect(() => {
     setActiveTab('contenuto');
   }, [currentSlide]);
-
   const renderSlideContent = () => {
     const content = slide.content;
 
@@ -1105,6 +1544,17 @@ export default function ModuloTrendTecnologici({ onBack }: { onBack?: () => void
               </div>
             </div>
             <div className="flex items-center gap-4">
+              {/* Pulsante Note Docente - solo per admin */}
+              {isAdmin && (
+                <button
+                  onClick={() => setShowSpeechPanel(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-lg font-medium hover:bg-amber-600 transition-colors"
+                >
+                  <span>📋</span>
+                  <span>Note Docente</span>
+                </button>
+              )}
+              
               <div className="text-sm text-gray-500">
                 Slide {currentSlide + 1} di {slidesData.length}
               </div>
@@ -1270,6 +1720,107 @@ export default function ModuloTrendTecnologici({ onBack }: { onBack?: () => void
           </div>
         </div>
       </div>
+
+      {/* Speech Panel per Admin */}
+      {isAdmin && showSpeechPanel && currentSpeech && (
+        <>
+          {/* Overlay */}
+          <div 
+            className="fixed inset-0 bg-black/30 z-40"
+            onClick={() => setShowSpeechPanel(false)}
+          />
+          
+          {/* Panel */}
+          <div className="fixed right-0 top-0 h-full w-[500px] bg-white shadow-2xl z-50 overflow-hidden flex flex-col">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <span className="text-2xl">📋</span>
+                  <span className="font-bold text-lg">Note Docente</span>
+                </div>
+                <button 
+                  onClick={() => setShowSpeechPanel(false)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="text-white/90 text-sm">
+                Slide {currentSpeech.slideId}: {currentSpeech.titolo}
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <span className="bg-white/20 px-2 py-1 rounded text-xs">⏱️ {currentSpeech.durata}</span>
+              </div>
+            </div>
+
+            {/* Content - Scrollable */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-6">
+              {/* Obiettivi */}
+              <div className="bg-blue-50 rounded-xl p-4">
+                <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
+                  🎯 Obiettivi della slide
+                </h4>
+                <ul className="space-y-1">
+                  {currentSpeech.obiettivi.map((obj: string, idx: number) => (
+                    <li key={idx} className="text-sm text-blue-700 flex items-start gap-2">
+                      <span className="text-blue-500">•</span>
+                      {obj}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Speech */}
+              <div className="bg-gray-50 rounded-xl p-4">
+                <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                  🎤 Speech consigliato
+                </h4>
+                <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                  {currentSpeech.speech}
+                </div>
+              </div>
+
+              {/* Note */}
+              <div className="bg-amber-50 rounded-xl p-4">
+                <h4 className="font-bold text-amber-800 mb-2 flex items-center gap-2">
+                  📝 Note per il docente
+                </h4>
+                <ul className="space-y-2">
+                  {currentSpeech.note.map((nota: string, idx: number) => (
+                    <li key={idx} className="text-sm text-amber-700 flex items-start gap-2">
+                      <span className="text-amber-500">⚠️</span>
+                      {nota}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              {/* Domande suggerite */}
+              <div className="bg-purple-50 rounded-xl p-4">
+                <h4 className="font-bold text-purple-800 mb-2 flex items-center gap-2">
+                  ❓ Domande da porre alla classe
+                </h4>
+                <ul className="space-y-2">
+                  {currentSpeech.domandeSuggerite.map((domanda: string, idx: number) => (
+                    <li key={idx} className="text-sm text-purple-700 flex items-start gap-2">
+                      <span className="text-purple-500 font-bold">{idx + 1}.</span>
+                      {domanda}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t p-4 bg-gray-50">
+              <div className="text-xs text-gray-500 text-center">
+                Queste note sono visibili solo agli utenti Admin
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
