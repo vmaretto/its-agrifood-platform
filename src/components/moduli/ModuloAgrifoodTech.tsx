@@ -1281,7 +1281,7 @@ const slidesData = [
 // COMPONENTE PRINCIPALE
 // ============================================
 
-export default function ModuloAgrifoodTechCompleto() {
+export default function ModuloAgrifoodTechCompleto({ onBack }: { onBack?: () => void }) {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeTab, setActiveTab] = useState('contenuto');
   const [showQuiz, setShowQuiz] = useState(false);
