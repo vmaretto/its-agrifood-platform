@@ -10,7 +10,7 @@ import ModuloAgrifoodTech from '../moduli/ModuloAgrifoodTech';
 import ModuloTrendTecnologici from '../moduli/ModuloTrendTecnologici';
 import ModuloDinamico from '../moduli/ModuloDinamico';
 import AdminNuovoModulo from './AdminNuovoModulo';
-import { getModules, getModule, deleteModule } from '@/services/moduliStorage';
+import { getModules, getModuleSync, deleteModule, getModulesSync } from '@/services/moduliStorage';
 import { ModuleJSON } from '@/types/module';
 
 // ============================================
@@ -136,16 +136,29 @@ const AdminDashboard = () => {
 
 const AdminContenuti = ({ setActiveModule, onRefresh }: { setActiveModule?: (id: string) => void; onRefresh?: number }) => {
   const [dynamicModules, setDynamicModules] = React.useState<ModuleJSON[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
 
-  // Carica i moduli dinamici dal localStorage
+  // Carica i moduli da Supabase
   React.useEffect(() => {
-    setDynamicModules(getModules());
+    const loadModules = async () => {
+      setIsLoading(true);
+      try {
+        const modules = await getModules();
+        setDynamicModules(modules);
+      } catch (err) {
+        console.error('Error loading modules:', err);
+        setDynamicModules(getModulesSync());
+      }
+      setIsLoading(false);
+    };
+    loadModules();
   }, [onRefresh]);
 
-  const handleDeleteModule = (id: string) => {
+  const handleDeleteModule = async (id: string) => {
     if (confirm('Sei sicuro di voler eliminare questo modulo?')) {
-      deleteModule(id);
-      setDynamicModules(getModules());
+      await deleteModule(id);
+      const modules = await getModules();
+      setDynamicModules(modules);
     }
   };
 
@@ -528,9 +541,9 @@ const ITSLearningPlatform: React.FC = () => {
       case 'trend-tecnologici':
         return <ModuloTrendTecnologici onBack={() => setActiveModule(null)} isAdmin={isAdmin} userRole={userRole} setUserRole={setUserRole} />;
       default:
-        // Controlla se è un modulo dinamico generato
+        // Controlla se è un modulo dinamico generato (usa versione sincrona per rendering)
         if (activeModule) {
-          const dynamicModule = getModule(activeModule);
+          const dynamicModule = getModuleSync(activeModule);
           if (dynamicModule) {
             return <ModuloDinamico module={dynamicModule} onBack={() => setActiveModule(null)} isAdmin={isAdmin} userRole={userRole} setUserRole={setUserRole} />;
           }

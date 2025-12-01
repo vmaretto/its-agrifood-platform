@@ -103,9 +103,9 @@ export default function AdminNuovoModulo({ onModuleCreated }: AdminNuovoModuloPr
     }
   };
 
-  const saveGeneratedModule = () => {
+  const saveGeneratedModule = async () => {
     if (generatedModule) {
-      saveModule(generatedModule);
+      await saveModule(generatedModule);
       onModuleCreated?.(generatedModule);
 
       // Reset form
