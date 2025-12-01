@@ -2,6 +2,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { getModule } from '@/services/moduliStorage';
+import { NoteDocenteItem } from '@/types/module';
 
 // ============================================
 // COMPONENTI RIUTILIZZABILI
@@ -1165,12 +1167,35 @@ export default function ModuloTrendTecnologici({ onBack, isAdmin = false, userRo
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeTab, setActiveTab] = useState('contenuto');
   const [showSpeechPanel, setShowSpeechPanel] = useState(false);
+  const [noteDocenteData, setNoteDocenteData] = useState<(NoteDocenteItem | undefined)[]>([]);
+
+  // Carica le noteDocente da Supabase se disponibili
+  useEffect(() => {
+    const loadNoteDocente = async () => {
+      const moduleData = await getModule('trend-tecnologici');
+      if (moduleData?.slides) {
+        const notes = moduleData.slides.map(slide => slide.noteDocente);
+        setNoteDocenteData(notes);
+      }
+    };
+    loadNoteDocente();
+  }, []);
 
   const slide = slidesData[currentSlide];
   const progress = ((currentSlide + 1) / slidesData.length) * 100;
-  
-  // Trova lo speech per la slide corrente
-  const currentSpeech = speechData.find(s => s.slideId === slide.id);
+
+  // Trova lo speech per la slide corrente (preferisce Supabase, fallback a locale)
+  const supabaseNote = noteDocenteData[currentSlide];
+  const localSpeech = speechData.find(s => s.slideId === slide.id);
+  const currentSpeech = supabaseNote ? {
+    slideId: slide.id,
+    titolo: slide.title,
+    durata: supabaseNote.durata,
+    obiettivi: supabaseNote.obiettivi,
+    speech: supabaseNote.speech,
+    note: supabaseNote.note,
+    domandeSuggerite: supabaseNote.domande
+  } : localSpeech;
 
   const tabs = [
     { id: 'contenuto', label: 'Contenuto', icon: '📚' },

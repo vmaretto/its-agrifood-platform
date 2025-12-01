@@ -1,5 +1,7 @@
 // @ts-nocheck
 import React, { useState, useEffect } from 'react';
+import { getModule } from '@/services/moduliStorage';
+import { NoteDocenteItem } from '@/types/module';
 
 // ============================================
 // COMPONENTI RIUTILIZZABILI
@@ -1285,8 +1287,22 @@ export default function ModuloAgrifoodTechCompleto({ onBack, isAdmin = false, us
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeTab, setActiveTab] = useState('contenuto');
   const [showQuiz, setShowQuiz] = useState(false);
+  const [noteDocenteData, setNoteDocenteData] = useState<(NoteDocenteItem | undefined)[]>([]);
+
+  // Carica le noteDocente da Supabase se disponibili
+  useEffect(() => {
+    const loadNoteDocente = async () => {
+      const moduleData = await getModule('agrifoodtech');
+      if (moduleData?.slides) {
+        const notes = moduleData.slides.map(slide => slide.noteDocente);
+        setNoteDocenteData(notes);
+      }
+    };
+    loadNoteDocente();
+  }, []);
 
   const slide = slidesData[currentSlide];
+  const currentNoteDocente = noteDocenteData[currentSlide];
   const progress = ((currentSlide + 1) / slidesData.length) * 100;
 
   const goNext = () => {
@@ -1305,12 +1321,17 @@ export default function ModuloAgrifoodTechCompleto({ onBack, isAdmin = false, us
     }
   };
 
-  const tabs = [
+  const baseTabs = [
     { id: 'contenuto', label: 'Contenuto', icon: '📚' },
     { id: 'video', label: 'Video', icon: '🎥', count: slide.videos?.length },
     { id: 'articoli', label: 'Articoli & PDF', icon: '📄', count: slide.articles?.length },
     { id: 'link', label: 'Link Esterni', icon: '🔗', count: slide.links?.length }
   ].filter(tab => tab.id === 'contenuto' || (slide[tab.id === 'video' ? 'videos' : tab.id === 'articoli' ? 'articles' : 'links']?.length > 0));
+
+  // Aggiungi tab Note Docente solo se userRole è admin e ci sono noteDocente
+  const tabs = userRole === 'admin' && currentNoteDocente
+    ? [...baseTabs, { id: 'noteDocente', label: 'Note Docente', icon: '👨‍🏫' }]
+    : baseTabs;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -1480,6 +1501,90 @@ export default function ModuloAgrifoodTechCompleto({ onBack, isAdmin = false, us
 
             {/* Fonti Istituzionali */}
             {slide.institutionalSources && <InstitutionalSources sources={slide.institutionalSources} />}
+          </div>
+        )}
+
+        {/* TAB: Note Docente */}
+        {activeTab === 'noteDocente' && currentNoteDocente && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <div className="flex items-center gap-3 mb-6">
+                <span className="text-2xl">👨‍🏫</span>
+                <h3 className="text-xl font-bold text-gray-800">Note per il Docente</h3>
+                {currentNoteDocente.durata && (
+                  <span className="ml-auto px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                    ⏱️ {currentNoteDocente.durata}
+                  </span>
+                )}
+              </div>
+
+              {/* Obiettivi */}
+              {currentNoteDocente.obiettivi && currentNoteDocente.obiettivi.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <span>🎯</span> Obiettivi della Lezione
+                  </h4>
+                  <ul className="space-y-2">
+                    {currentNoteDocente.obiettivi.map((obj, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-gray-600">
+                        <span className="text-emerald-500 mt-1">✓</span>
+                        <span>{obj}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Speech */}
+              {currentNoteDocente.speech && (
+                <div className="mb-6">
+                  <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <span>🎤</span> Speech
+                  </h4>
+                  <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-5 border border-purple-100">
+                    <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{currentNoteDocente.speech}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Note */}
+              {currentNoteDocente.note && currentNoteDocente.note.length > 0 && (
+                <div className="mb-6">
+                  <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <span>📝</span> Note Importanti
+                  </h4>
+                  <div className="bg-amber-50 rounded-xl p-4 border border-amber-200">
+                    <ul className="space-y-2">
+                      {currentNoteDocente.note.map((nota, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-gray-700">
+                          <span className="text-amber-500">•</span>
+                          <span>{nota}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {/* Domande */}
+              {currentNoteDocente.domande && currentNoteDocente.domande.length > 0 && (
+                <div>
+                  <h4 className="font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <span>❓</span> Domande Suggerite
+                  </h4>
+                  <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
+                    <ul className="space-y-2">
+                      {currentNoteDocente.domande.map((domanda, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-gray-700">
+                          <span className="text-blue-500 font-bold">Q:</span>
+                          <span>{domanda}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

@@ -328,9 +328,10 @@ export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCanc
         throw new Error(data.error || 'Errore nel parsing delle note docente');
       }
 
-      // Crea un nuovo modulo dinamico con le noteDocente parsate
-      const newModule: ModuleJSON = {
-        id: `${editModuleId}-with-speech-${Date.now().toString(36)}`,
+      // Salva le noteDocente con l'ID originale del modulo statico
+      // Il contenuto rimane hardcoded nel componente React, solo le noteDocente vengono caricate da Supabase
+      const moduleWithSpeech: ModuleJSON = {
+        id: editModuleId, // USA L'ID ORIGINALE del modulo statico
         titolo: staticModuleInfo.titolo,
         descrizione: staticModuleInfo.descrizione,
         icon: staticModuleInfo.icon,
@@ -340,7 +341,7 @@ export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCanc
           id: idx + 1,
           title: slide.title,
           section: slide.section,
-          contenuto: `Contenuto della slide "${slide.title}"`, // Placeholder - il contenuto reale è nel componente statico
+          contenuto: '', // Il contenuto reale è nel componente statico, non serve duplicarlo
           noteDocente: data.noteDocente[idx] ? {
             durata: data.noteDocente[idx].durata || '8-10 min',
             obiettivi: data.noteDocente[idx].obiettivi || [],
@@ -351,7 +352,7 @@ export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCanc
         })) as SlideJSON[],
       };
 
-      setGeneratedModule(newModule);
+      setGeneratedModule(moduleWithSpeech);
       setStatus('success');
     } catch (error) {
       setErrorMessage(error instanceof Error ? error.message : 'Errore sconosciuto');
