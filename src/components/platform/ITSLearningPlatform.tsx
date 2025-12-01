@@ -10,7 +10,7 @@ import ModuloAgrifoodTech from '../moduli/ModuloAgrifoodTech';
 import ModuloTrendTecnologici from '../moduli/ModuloTrendTecnologici';
 import ModuloDinamico from '../moduli/ModuloDinamico';
 import AdminNuovoModulo from './AdminNuovoModulo';
-import { getModules, getModule } from '@/services/moduliStorage';
+import { getModules, getModule, deleteModule } from '@/services/moduliStorage';
 import { ModuleJSON } from '@/types/module';
 
 // ============================================
@@ -134,24 +134,50 @@ const AdminDashboard = () => {
   );
 };
 
-const AdminContenuti = () => {
-  const moduli = [
-    { id: 'agrifoodtech', nome: 'Tendenze AgrifoodTech', slides: 10, video: 14, articoli: 33, stato: 'pubblicato' },
-    { id: 'trend-tecnologici', nome: 'Trend Tecnologici 2026+', slides: 12, video: 12, articoli: 18, stato: 'pubblicato' },
-    { id: 'blockchain', nome: 'Blockchain per il Food', slides: 0, video: 0, articoli: 0, stato: 'bozza' },
-    { id: 'sostenibilita', nome: 'Sostenibilità nel Food', slides: 0, video: 0, articoli: 0, stato: 'bozza' },
+const AdminContenuti = ({ setActiveModule, onRefresh }: { setActiveModule?: (id: string) => void; onRefresh?: number }) => {
+  const [dynamicModules, setDynamicModules] = React.useState<ModuleJSON[]>([]);
+
+  // Carica i moduli dinamici dal localStorage
+  React.useEffect(() => {
+    setDynamicModules(getModules());
+  }, [onRefresh]);
+
+  const handleDeleteModule = (id: string) => {
+    if (confirm('Sei sicuro di voler eliminare questo modulo?')) {
+      deleteModule(id);
+      setDynamicModules(getModules());
+    }
+  };
+
+  // Moduli statici (built-in)
+  const staticModules = [
+    { id: 'agrifoodtech', nome: 'Tendenze AgrifoodTech', slides: 10, video: 14, articoli: 33, stato: 'pubblicato', isStatic: true },
+    { id: 'trend-tecnologici', nome: 'Trend Tecnologici 2026+', slides: 12, video: 12, articoli: 18, stato: 'pubblicato', isStatic: true },
+    { id: 'blockchain', nome: 'Blockchain per il Food', slides: 0, video: 0, articoli: 0, stato: 'bozza', isStatic: true },
+    { id: 'sostenibilita', nome: 'Sostenibilità nel Food', slides: 0, video: 0, articoli: 0, stato: 'bozza', isStatic: true },
   ];
+
+  // Converti moduli dinamici nel formato della tabella
+  const dynamicModuleRows = dynamicModules.map(m => ({
+    id: m.id,
+    nome: m.titolo,
+    slides: m.slides?.length || 0,
+    video: m.slides?.reduce((acc, s) => acc + (s.videos?.length || 0), 0) || 0,
+    articoli: m.slides?.reduce((acc, s) => acc + (s.articles?.length || 0), 0) || 0,
+    stato: 'pubblicato',
+    isStatic: false,
+    icon: m.icon,
+  }));
+
+  const allModules = [...staticModules, ...dynamicModuleRows];
 
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">📝 Gestione Contenuti</h1>
-          <p className="text-gray-500">Crea e modifica i moduli del corso</p>
+          <p className="text-gray-500">{allModules.length} moduli totali • {dynamicModules.length} generati con AI</p>
         </div>
-        <button className="px-4 py-2 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition-colors">
-          + Nuovo Modulo
-        </button>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -167,11 +193,19 @@ const AdminContenuti = () => {
             </tr>
           </thead>
           <tbody>
-            {moduli.map((modulo, idx) => (
+            {allModules.map((modulo, idx) => (
               <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50">
                 <td className="p-4">
-                  <div className="font-medium text-gray-800">{modulo.nome}</div>
-                  <div className="text-xs text-gray-500">ID: {modulo.id}</div>
+                  <div className="flex items-center gap-2">
+                    {'icon' in modulo && modulo.icon && <span>{modulo.icon}</span>}
+                    <div>
+                      <div className="font-medium text-gray-800">{modulo.nome}</div>
+                      <div className="text-xs text-gray-500">
+                        ID: {modulo.id}
+                        {!modulo.isStatic && <span className="ml-2 text-indigo-500">(AI Generated)</span>}
+                      </div>
+                    </div>
+                  </div>
                 </td>
                 <td className="p-4 text-center">
                   <span className="font-semibold text-gray-800">{modulo.slides}</span>
@@ -184,20 +218,30 @@ const AdminContenuti = () => {
                 </td>
                 <td className="p-4 text-center">
                   <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    modulo.stato === 'pubblicato' 
-                      ? 'bg-emerald-100 text-emerald-700' 
+                    modulo.stato === 'pubblicato'
+                      ? 'bg-emerald-100 text-emerald-700'
                       : 'bg-amber-100 text-amber-700'
                   }`}>
                     {modulo.stato}
                   </span>
                 </td>
                 <td className="p-4 text-right">
-                  <button className="px-3 py-1 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                    Modifica
-                  </button>
-                  <button className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors ml-2">
-                    Anteprima
-                  </button>
+                  {setActiveModule && (
+                    <button
+                      onClick={() => setActiveModule(modulo.id)}
+                      className="px-3 py-1 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                    >
+                      Apri
+                    </button>
+                  )}
+                  {!modulo.isStatic && (
+                    <button
+                      onClick={() => handleDeleteModule(modulo.id)}
+                      className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2"
+                    >
+                      Elimina
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -527,7 +571,7 @@ const ITSLearningPlatform: React.FC = () => {
       case 'admin-dashboard':
         return <AdminDashboard />;
       case 'admin-contenuti':
-        return <AdminContenuti />;
+        return <AdminContenuti setActiveModule={setActiveModule} />;
       case 'admin-squadre':
         return <AdminSquadre />;
       case 'admin-badge':
