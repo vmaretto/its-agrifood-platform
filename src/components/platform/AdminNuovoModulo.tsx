@@ -12,14 +12,23 @@ interface AdminNuovoModuloProps {
 }
 
 export default function AdminNuovoModulo({ onModuleCreated }: AdminNuovoModuloProps) {
+  // Content file state
   const [markdownContent, setMarkdownContent] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
+  const [isDragOverContent, setIsDragOverContent] = useState(false);
+
+  // Speech file state
+  const [speechContent, setSpeechContent] = useState('');
+  const [speechFileName, setSpeechFileName] = useState<string | null>(null);
+  const [isDragOverSpeech, setIsDragOverSpeech] = useState(false);
+
+  // Generation state
   const [status, setStatus] = useState<GenerationStatus>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [generatedModule, setGeneratedModule] = useState<ModuleJSON | null>(null);
-  const [isDragOver, setIsDragOver] = useState(false);
 
-  const handleFileUpload = useCallback((file: File) => {
+  // Content file handlers
+  const handleContentFileUpload = useCallback((file: File) => {
     if (!file.name.endsWith('.md')) {
       setErrorMessage('Per favore carica un file Markdown (.md)');
       return;
@@ -37,30 +46,73 @@ export default function AdminNuovoModulo({ onModuleCreated }: AdminNuovoModuloPr
     reader.readAsText(file);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleContentDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(false);
+    setIsDragOverContent(false);
     const file = e.dataTransfer.files[0];
-    if (file) handleFileUpload(file);
-  }, [handleFileUpload]);
+    if (file) handleContentFileUpload(file);
+  }, [handleContentFileUpload]);
 
-  const handleDragOver = useCallback((e: React.DragEvent) => {
+  const handleContentDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    setIsDragOver(true);
+    setIsDragOverContent(true);
   }, []);
 
-  const handleDragLeave = useCallback(() => {
-    setIsDragOver(false);
+  const handleContentDragLeave = useCallback(() => {
+    setIsDragOverContent(false);
   }, []);
 
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleContentFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) handleFileUpload(file);
-  }, [handleFileUpload]);
+    if (file) handleContentFileUpload(file);
+  }, [handleContentFileUpload]);
+
+  // Speech file handlers
+  const handleSpeechFileUpload = useCallback((file: File) => {
+    if (!file.name.endsWith('.md')) {
+      setErrorMessage('Per favore carica un file Markdown (.md) per le note docente');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      setSpeechContent(content);
+      setSpeechFileName(file.name);
+      setErrorMessage('');
+    };
+    reader.readAsText(file);
+  }, []);
+
+  const handleSpeechDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOverSpeech(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleSpeechFileUpload(file);
+  }, [handleSpeechFileUpload]);
+
+  const handleSpeechDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOverSpeech(true);
+  }, []);
+
+  const handleSpeechDragLeave = useCallback(() => {
+    setIsDragOverSpeech(false);
+  }, []);
+
+  const handleSpeechFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleSpeechFileUpload(file);
+  }, [handleSpeechFileUpload]);
+
+  const removeSpeechFile = () => {
+    setSpeechContent('');
+    setSpeechFileName(null);
+  };
 
   const generateModule = async () => {
     if (!markdownContent) {
-      setErrorMessage('Carica prima un file Markdown');
+      setErrorMessage('Carica prima un file Markdown con i contenuti');
       return;
     }
 
@@ -75,6 +127,7 @@ export default function AdminNuovoModulo({ onModuleCreated }: AdminNuovoModuloPr
         },
         body: JSON.stringify({
           markdown: markdownContent,
+          speechMarkdown: speechContent || undefined,
         }),
       });
 
@@ -109,16 +162,15 @@ export default function AdminNuovoModulo({ onModuleCreated }: AdminNuovoModuloPr
       onModuleCreated?.(generatedModule);
 
       // Reset form
-      setMarkdownContent('');
-      setFileName(null);
-      setGeneratedModule(null);
-      setStatus('idle');
+      resetForm();
     }
   };
 
   const resetForm = () => {
     setMarkdownContent('');
     setFileName(null);
+    setSpeechContent('');
+    setSpeechFileName(null);
     setStatus('idle');
     setErrorMessage('');
     setGeneratedModule(null);
@@ -128,73 +180,121 @@ export default function AdminNuovoModulo({ onModuleCreated }: AdminNuovoModuloPr
     <div className="p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-800">🚀 Genera Nuovo Modulo</h1>
-        <p className="text-gray-500">Carica un file Markdown e genera automaticamente un modulo interattivo</p>
+        <p className="text-gray-500">Carica i file Markdown e genera automaticamente un modulo interattivo</p>
       </div>
 
       <div className="grid grid-cols-2 gap-8">
         {/* Left Column - Upload & Preview */}
         <div className="space-y-6">
-          {/* Drop Zone */}
-          <div
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            className={`bg-white rounded-2xl shadow-sm p-8 border-2 border-dashed transition-colors ${
-              isDragOver
-                ? 'border-indigo-500 bg-indigo-50'
-                : fileName
-                ? 'border-emerald-500 bg-emerald-50'
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-          >
-            {fileName ? (
-              <div className="text-center">
-                <div className="text-4xl mb-3">📄</div>
-                <div className="font-semibold text-gray-800">{fileName}</div>
-                <div className="text-sm text-gray-500 mt-1">
-                  {markdownContent.length.toLocaleString()} caratteri
+          {/* Content Drop Zone */}
+          <div>
+            <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <span>📄</span> Contenuto del Modulo
+              <span className="text-red-500">*</span>
+            </h3>
+            <div
+              onDrop={handleContentDrop}
+              onDragOver={handleContentDragOver}
+              onDragLeave={handleContentDragLeave}
+              className={`bg-white rounded-2xl shadow-sm p-6 border-2 border-dashed transition-colors ${
+                isDragOverContent
+                  ? 'border-indigo-500 bg-indigo-50'
+                  : fileName
+                  ? 'border-emerald-500 bg-emerald-50'
+                  : 'border-gray-300 hover:border-gray-400'
+              }`}
+            >
+              {fileName ? (
+                <div className="text-center">
+                  <div className="text-3xl mb-2">📄</div>
+                  <div className="font-semibold text-gray-800">{fileName}</div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    {markdownContent.length.toLocaleString()} caratteri
+                  </div>
+                  <button
+                    onClick={() => { setMarkdownContent(''); setFileName(null); setGeneratedModule(null); }}
+                    className="mt-3 text-sm text-red-600 hover:text-red-700"
+                  >
+                    Rimuovi
+                  </button>
                 </div>
-                <button
-                  onClick={resetForm}
-                  className="mt-4 text-sm text-red-600 hover:text-red-700"
-                >
-                  Rimuovi file
-                </button>
-              </div>
-            ) : (
-              <div className="text-center">
-                <div className="text-4xl mb-3">📤</div>
-                <div className="font-semibold text-gray-800 mb-2">
-                  Trascina qui il file Markdown
+              ) : (
+                <div className="text-center">
+                  <div className="text-3xl mb-2">📤</div>
+                  <div className="font-medium text-gray-800 mb-1">
+                    Trascina qui il file .md
+                  </div>
+                  <div className="text-sm text-gray-500 mb-3">con i contenuti delle slide</div>
+                  <label className="cursor-pointer">
+                    <span className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors text-sm">
+                      Seleziona file
+                    </span>
+                    <input
+                      type="file"
+                      accept=".md"
+                      onChange={handleContentFileSelect}
+                      className="hidden"
+                    />
+                  </label>
                 </div>
-                <div className="text-sm text-gray-500 mb-4">oppure</div>
-                <label className="cursor-pointer">
-                  <span className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors">
-                    Seleziona file
-                  </span>
-                  <input
-                    type="file"
-                    accept=".md"
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
-          {/* Markdown Preview */}
-          {markdownContent && (
-            <div className="bg-white rounded-2xl shadow-sm p-6">
-              <h3 className="font-semibold text-gray-800 mb-4">👁️ Anteprima Markdown</h3>
-              <div className="max-h-96 overflow-y-auto bg-gray-50 rounded-lg p-4">
-                <pre className="text-sm text-gray-700 whitespace-pre-wrap font-mono">
-                  {markdownContent.slice(0, 2000)}
-                  {markdownContent.length > 2000 && '...'}
-                </pre>
-              </div>
+          {/* Speech Drop Zone */}
+          <div>
+            <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <span>🎤</span> Note Docente
+              <span className="text-xs text-gray-400 font-normal">(opzionale)</span>
+            </h3>
+            <div
+              onDrop={handleSpeechDrop}
+              onDragOver={handleSpeechDragOver}
+              onDragLeave={handleSpeechDragLeave}
+              className={`bg-white rounded-2xl shadow-sm p-6 border-2 border-dashed transition-colors ${
+                isDragOverSpeech
+                  ? 'border-purple-500 bg-purple-50'
+                  : speechFileName
+                  ? 'border-purple-500 bg-purple-50'
+                  : 'border-gray-300 hover:border-gray-400'
+              }`}
+            >
+              {speechFileName ? (
+                <div className="text-center">
+                  <div className="text-3xl mb-2">🎤</div>
+                  <div className="font-semibold text-gray-800">{speechFileName}</div>
+                  <div className="text-sm text-gray-500 mt-1">
+                    {speechContent.length.toLocaleString()} caratteri
+                  </div>
+                  <button
+                    onClick={removeSpeechFile}
+                    className="mt-3 text-sm text-red-600 hover:text-red-700"
+                  >
+                    Rimuovi
+                  </button>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="text-3xl mb-2">🎤</div>
+                  <div className="font-medium text-gray-800 mb-1">
+                    Trascina qui il file .md
+                  </div>
+                  <div className="text-sm text-gray-500 mb-3">con speech e note per ogni slide</div>
+                  <label className="cursor-pointer">
+                    <span className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm">
+                      Seleziona file
+                    </span>
+                    <input
+                      type="file"
+                      accept=".md"
+                      onChange={handleSpeechFileSelect}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              )}
             </div>
-          )}
+          </div>
 
           {/* Generate Button */}
           {markdownContent && status !== 'success' && (
@@ -216,6 +316,7 @@ export default function AdminNuovoModulo({ onModuleCreated }: AdminNuovoModuloPr
                 <span className="flex items-center justify-center gap-2">
                   <span>🚀</span>
                   Genera Modulo con AI
+                  {speechFileName && <span className="text-sm opacity-75">(+ Note Docente)</span>}
                 </span>
               )}
             </button>
@@ -247,6 +348,11 @@ export default function AdminNuovoModulo({ onModuleCreated }: AdminNuovoModuloPr
                   <br />
                   Questo potrebbe richiedere 30-60 secondi.
                 </p>
+                {speechFileName && (
+                  <p className="text-purple-600 mt-2 text-sm">
+                    🎤 Integrazione note docente in corso...
+                  </p>
+                )}
                 <div className="mt-6 flex justify-center">
                   <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
                     <div className="h-full bg-indigo-500 animate-pulse" style={{ width: '60%' }} />
@@ -339,34 +445,51 @@ export default function AdminNuovoModulo({ onModuleCreated }: AdminNuovoModuloPr
                 <div className="flex items-start gap-3">
                   <span className="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm font-bold">1</span>
                   <div>
-                    <div className="font-medium text-gray-800">Carica il tuo Markdown</div>
-                    <div className="text-sm text-gray-500">Trascina o seleziona un file .md con i contenuti del corso</div>
+                    <div className="font-medium text-gray-800">Carica il contenuto</div>
+                    <div className="text-sm text-gray-500">File .md con i contenuti delle slide</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm font-bold">2</span>
+                  <span className="w-6 h-6 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center text-sm font-bold">2</span>
                   <div>
-                    <div className="font-medium text-gray-800">Claude AI genera il modulo</div>
-                    <div className="text-sm text-gray-500">Il contenuto viene trasformato in slide interattive con quiz, video e note docente</div>
+                    <div className="font-medium text-gray-800">Aggiungi le note docente <span className="text-gray-400 text-xs">(opzionale)</span></div>
+                    <div className="text-sm text-gray-500">File .md con speech per ogni slide</div>
                   </div>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm font-bold">3</span>
+                  <span className="w-6 h-6 bg-emerald-100 text-emerald-700 rounded-full flex items-center justify-center text-sm font-bold">3</span>
                   <div>
-                    <div className="font-medium text-gray-800">Salva e pubblica</div>
-                    <div className="text-sm text-gray-500">Il modulo sarà disponibile per gli studenti nel percorso formativo</div>
+                    <div className="font-medium text-gray-800">Genera e salva</div>
+                    <div className="text-sm text-gray-500">Claude crea il modulo interattivo</div>
                   </div>
                 </div>
               </div>
 
-              <div className="mt-6 p-4 bg-amber-50 rounded-xl">
-                <h4 className="font-medium text-amber-800 mb-2">📝 Suggerimenti per il Markdown</h4>
-                <ul className="text-sm text-amber-700 space-y-1">
-                  <li>• Usa titoli (## e ###) per separare le sezioni</li>
-                  <li>• Includi numeri e statistiche per generare grafici</li>
-                  <li>• Aggiungi domande per suggerire i quiz</li>
-                  <li>• Scrivi note per il docente tra [NOTE: ...]</li>
-                </ul>
+              <div className="mt-6 p-4 bg-purple-50 rounded-xl">
+                <h4 className="font-medium text-purple-800 mb-2">🎤 Formato file Note Docente</h4>
+                <pre className="text-xs text-purple-700 bg-purple-100 rounded p-2 overflow-x-auto">
+{`# Titolo Slide 1
+
+**Durata:** 8-10 min
+
+**Obiettivi:**
+- Obiettivo 1
+- Obiettivo 2
+
+**Speech:**
+Testo dello speech...
+
+**Note:**
+- Nota per il docente
+
+**Domande:**
+- Domanda suggerita?
+
+---
+
+# Titolo Slide 2
+...`}
+                </pre>
               </div>
             </div>
           )}
