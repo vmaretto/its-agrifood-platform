@@ -134,7 +134,7 @@ const AdminDashboard = () => {
   );
 };
 
-const AdminContenuti = ({ setActiveModule, onRefresh }: { setActiveModule?: (id: string) => void; onRefresh?: number }) => {
+const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule }: { setActiveModule?: (id: string) => void; onRefresh?: number; onEditModule?: (moduleId: string) => void }) => {
   const [dynamicModules, setDynamicModules] = React.useState<ModuleJSON[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -245,6 +245,14 @@ const AdminContenuti = ({ setActiveModule, onRefresh }: { setActiveModule?: (id:
                       className="px-3 py-1 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                     >
                       Apri
+                    </button>
+                  )}
+                  {!modulo.isStatic && onEditModule && (
+                    <button
+                      onClick={() => onEditModule(modulo.id)}
+                      className="px-3 py-1 text-sm text-purple-600 hover:bg-purple-50 rounded-lg transition-colors ml-2"
+                    >
+                      Modifica
                     </button>
                   )}
                   {!modulo.isStatic && (
@@ -530,8 +538,15 @@ const ITSLearningPlatform: React.FC = () => {
   const [currentView, setCurrentView] = useState('home');
   const [userRole, setUserRole] = useState<'student' | 'admin'>('student');
   const [activeModule, setActiveModule] = useState<string | null>(null);
+  const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
 
   const isAdmin = userRole === 'admin';
+
+  // Handler per editare un modulo
+  const handleEditModule = (moduleId: string) => {
+    setEditingModuleId(moduleId);
+    setCurrentView('admin-nuovo-modulo');
+  };
 
   // Render del modulo attivo
   const renderActiveModule = () => {
@@ -584,7 +599,7 @@ const ITSLearningPlatform: React.FC = () => {
       case 'admin-dashboard':
         return <AdminDashboard />;
       case 'admin-contenuti':
-        return <AdminContenuti setActiveModule={setActiveModule} />;
+        return <AdminContenuti setActiveModule={setActiveModule} onEditModule={handleEditModule} />;
       case 'admin-squadre':
         return <AdminSquadre />;
       case 'admin-badge':
@@ -594,7 +609,17 @@ const ITSLearningPlatform: React.FC = () => {
       case 'admin-settings':
         return <AdminSettings />;
       case 'admin-nuovo-modulo':
-        return <AdminNuovoModulo onModuleCreated={() => setCurrentView('admin-contenuti')} />;
+        return <AdminNuovoModulo
+          editModuleId={editingModuleId}
+          onModuleCreated={() => {
+            setEditingModuleId(null);
+            setCurrentView('admin-contenuti');
+          }}
+          onCancel={() => {
+            setEditingModuleId(null);
+            setCurrentView('admin-contenuti');
+          }}
+        />;
 
       default:
         return (
