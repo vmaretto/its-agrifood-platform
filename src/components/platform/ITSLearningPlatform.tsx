@@ -247,7 +247,7 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule }: { setActiv
                       Apri
                     </button>
                   )}
-                  {!modulo.isStatic && onEditModule && (
+                  {onEditModule && (
                     <button
                       onClick={() => onEditModule(modulo.id)}
                       className="px-3 py-1 text-sm text-purple-600 hover:bg-purple-50 rounded-lg transition-colors ml-2"
@@ -255,14 +255,12 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule }: { setActiv
                       Modifica
                     </button>
                   )}
-                  {!modulo.isStatic && (
-                    <button
-                      onClick={() => handleDeleteModule(modulo.id)}
-                      className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2"
-                    >
-                      Elimina
-                    </button>
-                  )}
+                  <button
+                    onClick={() => handleDeleteModule(modulo.id)}
+                    className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2"
+                  >
+                    Elimina
+                  </button>
                 </td>
               </tr>
             ))}
