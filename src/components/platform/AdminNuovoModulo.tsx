@@ -17,8 +17,6 @@ export default function AdminNuovoModulo({ onModuleCreated }: AdminNuovoModuloPr
   const [status, setStatus] = useState<GenerationStatus>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [generatedModule, setGeneratedModule] = useState<ModuleJSON | null>(null);
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKeyInput, setShowApiKeyInput] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleFileUpload = useCallback((file: File) => {
@@ -77,7 +75,6 @@ export default function AdminNuovoModulo({ onModuleCreated }: AdminNuovoModuloPr
         },
         body: JSON.stringify({
           markdown: markdownContent,
-          apiKey: apiKey || undefined,
         }),
       });
 
@@ -133,33 +130,6 @@ export default function AdminNuovoModulo({ onModuleCreated }: AdminNuovoModuloPr
       <div className="grid grid-cols-2 gap-8">
         {/* Left Column - Upload & Preview */}
         <div className="space-y-6">
-          {/* API Key Input (opzionale) */}
-          <div className="bg-white rounded-2xl shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-gray-800">🔑 API Key Claude</h3>
-              <button
-                onClick={() => setShowApiKeyInput(!showApiKeyInput)}
-                className="text-sm text-indigo-600 hover:text-indigo-700"
-              >
-                {showApiKeyInput ? 'Nascondi' : 'Configura'}
-              </button>
-            </div>
-            {showApiKeyInput && (
-              <div>
-                <input
-                  type="password"
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-ant-..."
-                  className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                />
-                <p className="mt-2 text-xs text-gray-500">
-                  Opzionale se configurato in ambiente (.env)
-                </p>
-              </div>
-            )}
-          </div>
-
           {/* Drop Zone */}
           <div
             onDrop={handleDrop}

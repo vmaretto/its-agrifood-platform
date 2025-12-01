@@ -83,7 +83,7 @@ Rispondi SOLO con il JSON valido, senza markdown code blocks, senza commenti, se
 
 export async function POST(request: NextRequest) {
   try {
-    const { markdown, apiKey } = await request.json();
+    const { markdown } = await request.json();
 
     if (!markdown) {
       return NextResponse.json(
@@ -92,13 +92,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Usa API key dall'env o dal body della richiesta
-    const anthropicApiKey = apiKey || process.env.ANTHROPIC_API_KEY;
+    // Usa API key dall'env (configurata in Vercel)
+    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
 
     if (!anthropicApiKey) {
       return NextResponse.json(
-        { error: 'API key is required. Set ANTHROPIC_API_KEY env variable or provide apiKey in request.' },
-        { status: 400 }
+        { error: 'API key non configurata. Configura ANTHROPIC_API_KEY nelle variabili ambiente di Vercel.' },
+        { status: 500 }
       );
     }
 
