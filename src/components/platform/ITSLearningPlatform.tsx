@@ -8,6 +8,10 @@ import PercorsoView from './PercorsoView';
 import PlaceholderView from './PlaceholderView';
 import ModuloAgrifoodTech from '../moduli/ModuloAgrifoodTech';
 import ModuloTrendTecnologici from '../moduli/ModuloTrendTecnologici';
+import ModuloDinamico from '../moduli/ModuloDinamico';
+import AdminNuovoModulo from './AdminNuovoModulo';
+import { getModules, getModule } from '@/services/moduliStorage';
+import { ModuleJSON } from '@/types/module';
 
 // ============================================
 // COMPONENTI ADMIN
@@ -480,6 +484,13 @@ const ITSLearningPlatform: React.FC = () => {
       case 'trend-tecnologici':
         return <ModuloTrendTecnologici onBack={() => setActiveModule(null)} isAdmin={isAdmin} userRole={userRole} setUserRole={setUserRole} />;
       default:
+        // Controlla se è un modulo dinamico generato
+        if (activeModule) {
+          const dynamicModule = getModule(activeModule);
+          if (dynamicModule) {
+            return <ModuloDinamico module={dynamicModule} onBack={() => setActiveModule(null)} isAdmin={isAdmin} userRole={userRole} setUserRole={setUserRole} />;
+          }
+        }
         return null;
     }
   };
@@ -525,7 +536,9 @@ const ITSLearningPlatform: React.FC = () => {
         return <AdminHackathon />;
       case 'admin-settings':
         return <AdminSettings />;
-      
+      case 'admin-nuovo-modulo':
+        return <AdminNuovoModulo onModuleCreated={() => setCurrentView('admin-contenuti')} />;
+
       default:
         return (
           <HomeDashboard

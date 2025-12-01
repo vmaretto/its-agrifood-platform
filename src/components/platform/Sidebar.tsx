@@ -36,6 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const adminMenu: MenuItem[] = [
     { id: 'admin-dashboard', icon: '📊', label: 'Dashboard' },
     { id: 'admin-contenuti', icon: '📝', label: 'Contenuti' },
+    { id: 'admin-nuovo-modulo', icon: '🚀', label: 'Nuovo Modulo' },
     { id: 'admin-squadre', icon: '👥', label: 'Squadre' },
     { id: 'admin-badge', icon: '🎖️', label: 'Badge' },
     { id: 'admin-hackathon', icon: '💡', label: 'Hackathon' },
