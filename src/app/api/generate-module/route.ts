@@ -68,18 +68,19 @@ Il JSON deve seguire ESATTAMENTE questa struttura:
 }
 
 REGOLE IMPORTANTI:
-1. Dividi il contenuto in 6-12 slide logiche
-2. Ogni slide DEVE avere: id, section, title, contenuto
-3. stats, videos, articles, links, quiz, noteDocente sono OPZIONALI
-4. Aggiungi statistiche (stats) SOLO dove ci sono numeri significativi nel testo
-5. Per i video, suggerisci titoli realistici di video YouTube esistenti sul tema
-6. Per gli articoli, cita fonti autorevoli (FAO, McKinsey, Deloitte, università, etc.)
-7. Crea quiz pertinenti per verificare la comprensione (non per ogni slide, solo 3-4 nel modulo)
-8. Le noteDocente devono aiutare il docente a presentare: speech dettagliato, obiettivi, domande per la classe
-9. Usa emoji appropriate nei campi icon e nello speech
-10. Il contenuto deve essere in ITALIANO
+1. Dividi il contenuto in massimo 6-8 slide (non di più!)
+2. Ogni slide DEVE avere: id, section, title, contenuto (contenuto max 200 parole)
+3. stats, videos, articles, links, quiz, noteDocente sono OPZIONALI - usali con parsimonia
+4. Aggiungi statistiche (stats) SOLO dove ci sono numeri nel testo originale (max 4 stats per slide)
+5. Per i video, massimo 2 per slide, solo se pertinenti
+6. Per gli articoli, massimo 2 per slide
+7. Crea solo 2-3 quiz in tutto il modulo
+8. Le noteDocente: speech max 150 parole, max 3 obiettivi, max 2 note, max 2 domande
+9. Usa emoji appropriate
+10. Contenuto in ITALIANO
+11. IMPORTANTE: Il JSON deve essere compatto e valido. Non superare i limiti indicati.
 
-Rispondi SOLO con il JSON valido, senza markdown code blocks, senza commenti, senza testo aggiuntivo.`;
+Rispondi SOLO con il JSON valido, senza markdown code blocks, senza commenti.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -111,7 +112,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 8000,
+        max_tokens: 16000,
         messages: [
           {
             role: 'user',
