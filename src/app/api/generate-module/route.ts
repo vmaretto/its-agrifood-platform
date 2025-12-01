@@ -141,27 +141,47 @@ export async function POST(request: NextRequest) {
     }
 
     // Parse il JSON dalla risposta
-    try {
-      const moduleData = JSON.parse(content);
-      return NextResponse.json({ module: moduleData });
-    } catch {
-      // Se il parsing fallisce, prova a estrarre il JSON dalla risposta
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        try {
-          const moduleData = JSON.parse(jsonMatch[0]);
-          return NextResponse.json({ module: moduleData });
-        } catch {
-          return NextResponse.json(
-            { error: 'Failed to parse module JSON from Claude response', raw: content },
-            { status: 500 }
-          );
-        }
-      }
+    // Rimuovi eventuali markdown code blocks e whitespace
+    let cleanContent = content
+      .replace(/```json\s*/gi, '')
+      .replace(/```\s*/g, '')
+      .trim();
+
+    // Trova il JSON object nella risposta
+    const jsonStartIndex = cleanContent.indexOf('{');
+    const jsonEndIndex = cleanContent.lastIndexOf('}');
+
+    if (jsonStartIndex === -1 || jsonEndIndex === -1) {
       return NextResponse.json(
-        { error: 'Failed to parse module JSON', raw: content },
+        { error: 'No JSON object found in Claude response', raw: content.substring(0, 500) },
         { status: 500 }
       );
+    }
+
+    const jsonString = cleanContent.substring(jsonStartIndex, jsonEndIndex + 1);
+
+    try {
+      const moduleData = JSON.parse(jsonString);
+      return NextResponse.json({ module: moduleData });
+    } catch (parseError) {
+      // Prova a fixare problemi comuni nel JSON
+      try {
+        // Rimuovi virgole finali prima di } o ]
+        const fixedJson = jsonString
+          .replace(/,\s*}/g, '}')
+          .replace(/,\s*]/g, ']');
+        const moduleData = JSON.parse(fixedJson);
+        return NextResponse.json({ module: moduleData });
+      } catch {
+        return NextResponse.json(
+          {
+            error: 'Failed to parse module JSON from Claude response',
+            parseError: parseError instanceof Error ? parseError.message : 'Unknown parse error',
+            raw: jsonString.substring(0, 1000)
+          },
+          { status: 500 }
+        );
+      }
     }
   } catch (error) {
     console.error('Generate module error:', error);

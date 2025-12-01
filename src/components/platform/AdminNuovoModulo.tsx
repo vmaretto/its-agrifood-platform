@@ -81,7 +81,11 @@ export default function AdminNuovoModulo({ onModuleCreated }: AdminNuovoModuloPr
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Errore nella generazione del modulo');
+        let errorMsg = data.error || 'Errore nella generazione del modulo';
+        if (data.parseError) {
+          errorMsg += ` (${data.parseError})`;
+        }
+        throw new Error(errorMsg);
       }
 
       // Aggiungi id e timestamp
