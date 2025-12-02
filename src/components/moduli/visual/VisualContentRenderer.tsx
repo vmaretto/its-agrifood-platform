@@ -8,7 +8,15 @@ import { Timeline } from './Timeline';
 import { SupplyChainDiagram } from './SupplyChainDiagram';
 import { FarmToForkTargets } from './FarmToForkTargets';
 import { SuggestionBox } from './SuggestionBox';
-import { ProgressBar } from './ProgressBar';
+import { HeroSection } from './HeroSection';
+import { AlertBox } from './AlertBox';
+import { StatBox } from './StatBox';
+import { InfoBox } from './InfoBox';
+import { ItemsList } from './ItemsList';
+import { QuoteBlock } from './QuoteBlock';
+import { ParagraphBlock } from './ParagraphBlock';
+import { ESGSection } from './ESGSection';
+import { ThemesList } from './ThemesList';
 
 interface VisualContentRendererProps {
   content: VisualContent;
@@ -17,9 +25,39 @@ interface VisualContentRendererProps {
 export function VisualContentRenderer({ content }: VisualContentRendererProps) {
   return (
     <div className="space-y-6">
+      {/* Hero Section se presente */}
+      {(content.heroEmoji || content.heroTitle || content.heroDescription || content.heroBanner) && (
+        <HeroSection
+          emoji={content.heroEmoji}
+          title={content.heroTitle}
+          description={content.heroDescription}
+          banner={content.heroBanner}
+        />
+      )}
+
+      {/* Intro Paragraph se presente */}
+      {content.introParagraph && (
+        <ParagraphBlock text={content.introParagraph} className="text-lg" />
+      )}
+
       {/* Stats Grid se presente */}
       {content.mainStats && content.mainStats.length > 0 && (
         <StatsGrid stats={content.mainStats} />
+      )}
+
+      {/* StatsGrid alternativo */}
+      {content.statsGrid && content.statsGrid.length > 0 && (
+        <StatsGrid stats={content.statsGrid} />
+      )}
+
+      {/* StatsRow */}
+      {content.statsRow && content.statsRow.length > 0 && (
+        <StatsGrid stats={content.statsRow} />
+      )}
+
+      {/* FinalStats */}
+      {content.finalStats && content.finalStats.length > 0 && (
+        <StatsGrid stats={content.finalStats} />
       )}
 
       {/* Preferences (come stats) se presente */}
@@ -116,6 +154,84 @@ export function VisualContentRenderer({ content }: VisualContentRendererProps) {
             ))}
           </div>
         </div>
+      )}
+
+      {/* StatBox singolo */}
+      {content.statBox && (
+        <StatBox {...content.statBox} />
+      )}
+
+      {/* MainStat */}
+      {content.mainStat && (
+        <StatBox {...content.mainStat} variant="main" />
+      )}
+
+      {/* SecondaryStat */}
+      {content.secondaryStat && (
+        <StatBox {...content.secondaryStat} variant="secondary" />
+      )}
+
+      {/* Alert Box */}
+      {content.alert && (
+        <AlertBox {...content.alert} />
+      )}
+
+      {/* AlertBox alternativo */}
+      {content.alertBox && (
+        <AlertBox {...content.alertBox} />
+      )}
+
+      {/* Info Boxes */}
+      {content.caseBox && (
+        <InfoBox {...content.caseBox} type="case" />
+      )}
+
+      {content.aiBox && (
+        <InfoBox {...content.aiBox} type="ai" />
+      )}
+
+      {content.advantageBox && (
+        <InfoBox {...content.advantageBox} type="advantage" />
+      )}
+
+      {content.genZBox && (
+        <InfoBox {...content.genZBox} type="genZ" />
+      )}
+
+      {/* Themes */}
+      {content.themes && content.themes.length > 0 && (
+        <ThemesList themes={content.themes} />
+      )}
+
+      {/* Liste strutturate */}
+      {content.vantaggi && content.vantaggi.length > 0 && (
+        <ItemsList items={content.vantaggi} variant="vantaggi" titleIcon="✨" title="Vantaggi" />
+      )}
+
+      {content.solutions && content.solutions.length > 0 && (
+        <ItemsList items={content.solutions} variant="solutions" titleIcon="💡" title="Soluzioni" />
+      )}
+
+      {content.challenges && content.challenges.length > 0 && (
+        <ItemsList items={content.challenges} variant="challenges" titleIcon="⚡" title="Sfide" />
+      )}
+
+      {content.trends && content.trends.length > 0 && (
+        <ItemsList items={content.trends} variant="trends" titleIcon="📈" title="Trend" />
+      )}
+
+      {content.wineList && content.wineList.length > 0 && (
+        <ItemsList items={content.wineList} titleIcon="🍷" title="Vini" />
+      )}
+
+      {/* ESG Items */}
+      {content.esgItems && content.esgItems.length > 0 && (
+        <ESGSection items={content.esgItems} />
+      )}
+
+      {/* Quote */}
+      {content.quote && (
+        <QuoteBlock {...content.quote} />
       )}
     </div>
   );

@@ -95,16 +95,91 @@ export interface InstitutionalSource {
   icon?: string;
 }
 
+// Nuovi tipi per contenuti estesi generati da Claude
+
+export interface HeroBanner {
+  emoji?: string;
+  title?: string;
+  description?: string;
+  bgGradient?: string;
+}
+
+export interface AlertBoxItem {
+  type?: 'info' | 'warning' | 'success' | 'error';
+  icon?: string;
+  title?: string;
+  text?: string;
+}
+
+export interface StatBoxItem {
+  value?: number | string;
+  suffix?: string;
+  prefix?: string;
+  label?: string;
+  description?: string;
+  bgColor?: string;
+  icon?: string;
+}
+
+export interface ListItemContent {
+  icon?: string;
+  text?: string;
+  title?: string;
+  highlight?: boolean;
+  description?: string;
+}
+
+export interface ThemeItem {
+  title?: string;
+  description?: string;
+  color?: string;
+  icon?: string;
+}
+
+export interface InfoBoxItem {
+  type?: 'case' | 'ai' | 'advantage' | 'genZ' | 'generic';
+  icon?: string;
+  title?: string;
+  description?: string;
+  items?: string[];
+  bgColor?: string;
+}
+
+export interface QuoteItem {
+  text?: string;
+  author?: string;
+  role?: string;
+}
+
+export interface ESGItem {
+  letter?: string;
+  title?: string;
+  description?: string;
+  color?: string;
+  items?: string[];
+}
+
 export interface VisualContent {
   // Stats e metriche
   mainStats?: StatItem[];
   technologies?: TechItem[];
   preferences?: StatItem[];
 
+  // Variazioni Stats
+  statsGrid?: StatItem[];
+  statBox?: StatBoxItem;
+  statsRow?: StatItem[];
+  mainStat?: StatBoxItem;
+  secondaryStat?: StatBoxItem;
+  finalStats?: StatItem[];
+
   // Timeline e diagrammi
   timeline?: TimelineItem[];
   supplyChain?: SupplyChainStage[];
   farmToForkTargets?: FarmToForkTarget[];
+
+  // ESG Items
+  esgItems?: ESGItem[];
 
   // Quiz (usa QuizItem esistente)
   quiz?: QuizItem;
@@ -117,6 +192,32 @@ export interface VisualContent {
 
   // Fonti istituzionali
   institutionalSources?: InstitutionalSource[];
+
+  // Hero/Banner
+  heroEmoji?: string;
+  heroTitle?: string;
+  heroDescription?: string;
+  heroBanner?: HeroBanner;
+
+  // Testo strutturato
+  introParagraph?: string;
+  quote?: QuoteItem;
+
+  // Box informativi
+  alert?: AlertBoxItem;
+  alertBox?: AlertBoxItem;
+  caseBox?: InfoBoxItem;
+  aiBox?: InfoBoxItem;
+  advantageBox?: InfoBoxItem;
+  genZBox?: InfoBoxItem;
+
+  // Liste strutturate
+  vantaggi?: ListItemContent[];
+  solutions?: ListItemContent[];
+  challenges?: ListItemContent[];
+  trends?: ListItemContent[];
+  themes?: ThemeItem[];
+  wineList?: ListItemContent[];
 
   // Campi generici per estensibilità
   [key: string]: unknown;
