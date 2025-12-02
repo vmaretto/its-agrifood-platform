@@ -8,6 +8,7 @@ import PercorsoView from './PercorsoView';
 import PlaceholderView from './PlaceholderView';
 import ModuloDinamico from '../moduli/ModuloDinamico';
 import AdminNuovoModulo from './AdminNuovoModulo';
+import AdminSquadre from './AdminSquadre';
 import { getModules, getModuleSync, deleteModule, getModulesSync } from '@/services/moduliStorage';
 import { ModuleJSON } from '@/types/module';
 
@@ -271,59 +272,7 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule }: { setActiv
   );
 };
 
-const AdminSquadre = () => {
-  const squadre = [
-    { nome: 'AgriTech Pioneers', membri: ['Marco R.', 'Laura B.', 'Giuseppe V.', 'Anna N.', 'Luca T.', 'Sara M.'], punti: 850, colore: 'bg-emerald-500' },
-    { nome: 'Farm Innovators', membri: ['Paolo G.', 'Maria C.', 'Andrea F.', 'Elena S.', 'Davide L.', 'Chiara P.'], punti: 720, colore: 'bg-blue-500' },
-    { nome: 'Green Data', membri: ['Francesco B.', 'Giulia R.', 'Matteo N.', 'Valentina T.', 'Simone A.', 'Martina G.'], punti: 680, colore: 'bg-purple-500' },
-    { nome: 'Blockchain Farmers', membri: ['Roberto M.', 'Alessia V.', 'Nicola D.', 'Federica L.', 'Tommaso C.', 'Elisa B.'], punti: 590, colore: 'bg-amber-500' },
-  ];
-
-  return (
-    <div className="p-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-800">👥 Gestione Squadre</h1>
-          <p className="text-gray-500">4 squadre • 24 studenti totali</p>
-        </div>
-        <button className="px-4 py-2 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition-colors">
-          + Nuova Squadra
-        </button>
-      </div>
-
-      <div className="grid grid-cols-2 gap-6">
-        {squadre.map((squadra, idx) => (
-          <div key={idx} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            <div className={`${squadra.colore} p-4 text-white`}>
-              <div className="flex items-center justify-between">
-                <div className="font-bold text-lg">{squadra.nome}</div>
-                <div className="text-2xl font-bold">{squadra.punti} pt</div>
-              </div>
-            </div>
-            <div className="p-4">
-              <div className="text-sm text-gray-500 mb-3">Membri ({squadra.membri.length})</div>
-              <div className="flex flex-wrap gap-2">
-                {squadra.membri.map((membro, midx) => (
-                  <span key={midx} className="px-3 py-1 bg-gray-100 rounded-full text-sm text-gray-700">
-                    {membro}
-                  </span>
-                ))}
-              </div>
-              <div className="mt-4 pt-4 border-t flex justify-end gap-2">
-                <button className="px-3 py-1 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
-                  Modifica
-                </button>
-                <button className="px-3 py-1 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
-                  Dettagli
-                </button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-};
+// AdminSquadre è ora importato da ./AdminSquadre
 
 const AdminBadge = () => {
   const badges = [
