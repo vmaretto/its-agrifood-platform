@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ModuleJSON, SlideJSON, StatItem, VideoItem, ArticleItem, LinkItem, QuizItem, NoteDocenteItem } from '@/types/module';
+import { saveModule } from '@/services/moduliStorage';
 
 // ============================================
 // COMPONENTI HELPER
@@ -173,6 +174,257 @@ const MiniQuiz = ({ quiz }: { quiz: QuizItem }) => {
 };
 
 // ============================================
+// MODAL PER MODIFICA VIDEO
+// ============================================
+
+interface VideoEditModalProps {
+  video: VideoItem | null;
+  onSave: (video: VideoItem) => void;
+  onDelete?: () => void;
+  onClose: () => void;
+  isNew?: boolean;
+}
+
+const VideoEditModal = ({ video, onSave, onDelete, onClose, isNew = false }: VideoEditModalProps) => {
+  const [editedVideo, setEditedVideo] = useState<VideoItem>(video || {
+    title: '',
+    source: '',
+    duration: '',
+    url: '',
+    language: ''
+  });
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="p-6 border-b">
+            <h3 className="text-lg font-bold text-gray-800">
+              {isNew ? 'Aggiungi Video' : 'Modifica Video'}
+            </h3>
+          </div>
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">URL Video *</label>
+              <input
+                type="url"
+                value={editedVideo.url}
+                onChange={e => setEditedVideo({ ...editedVideo, url: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="https://youtube.com/watch?v=..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Titolo *</label>
+              <input
+                type="text"
+                value={editedVideo.title}
+                onChange={e => setEditedVideo({ ...editedVideo, title: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Titolo del video"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fonte</label>
+                <input
+                  type="text"
+                  value={editedVideo.source}
+                  onChange={e => setEditedVideo({ ...editedVideo, source: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="YouTube, Vimeo..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Durata</label>
+                <input
+                  type="text"
+                  value={editedVideo.duration}
+                  onChange={e => setEditedVideo({ ...editedVideo, duration: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="10:30"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Lingua</label>
+              <input
+                type="text"
+                value={editedVideo.language || ''}
+                onChange={e => setEditedVideo({ ...editedVideo, language: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="IT, EN..."
+              />
+            </div>
+          </div>
+          <div className="p-6 border-t bg-gray-50 flex justify-between">
+            <div>
+              {!isNew && onDelete && (
+                <button
+                  onClick={onDelete}
+                  className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  Elimina
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={() => onSave(editedVideo)}
+                disabled={!editedVideo.url || !editedVideo.title}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Salva
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+// ============================================
+// MODAL PER MODIFICA ARTICOLO
+// ============================================
+
+interface ArticleEditModalProps {
+  article: ArticleItem | null;
+  onSave: (article: ArticleItem) => void;
+  onDelete?: () => void;
+  onClose: () => void;
+  isNew?: boolean;
+}
+
+const ArticleEditModal = ({ article, onSave, onDelete, onClose, isNew = false }: ArticleEditModalProps) => {
+  const [editedArticle, setEditedArticle] = useState<ArticleItem>(article || {
+    title: '',
+    source: '',
+    type: 'Articolo',
+    url: '',
+    year: '',
+    description: ''
+  });
+
+  const typeOptions = ['Report', 'Articolo', 'Guida', 'Case Study', 'Studio', 'PDF'];
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+          <div className="p-6 border-b">
+            <h3 className="text-lg font-bold text-gray-800">
+              {isNew ? 'Aggiungi Articolo' : 'Modifica Articolo'}
+            </h3>
+          </div>
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">URL *</label>
+              <input
+                type="url"
+                value={editedArticle.url}
+                onChange={e => setEditedArticle({ ...editedArticle, url: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="https://..."
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Titolo *</label>
+              <input
+                type="text"
+                value={editedArticle.title}
+                onChange={e => setEditedArticle({ ...editedArticle, title: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Titolo dell'articolo"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Fonte</label>
+                <input
+                  type="text"
+                  value={editedArticle.source}
+                  onChange={e => setEditedArticle({ ...editedArticle, source: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="Nome fonte"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Anno</label>
+                <input
+                  type="text"
+                  value={editedArticle.year || ''}
+                  onChange={e => setEditedArticle({ ...editedArticle, year: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                  placeholder="2024"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+              <select
+                value={editedArticle.type}
+                onChange={e => setEditedArticle({ ...editedArticle, type: e.target.value as ArticleItem['type'] })}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                {typeOptions.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione</label>
+              <textarea
+                value={editedArticle.description || ''}
+                onChange={e => setEditedArticle({ ...editedArticle, description: e.target.value })}
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Breve descrizione..."
+                rows={2}
+              />
+            </div>
+          </div>
+          <div className="p-6 border-t bg-gray-50 flex justify-between">
+            <div>
+              {!isNew && onDelete && (
+                <button
+                  onClick={onDelete}
+                  className="px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  Elimina
+                </button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={onClose}
+                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Annulla
+              </button>
+              <button
+                onClick={() => onSave(editedArticle)}
+                disabled={!editedArticle.url || !editedArticle.title}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Salva
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+};
+
+// ============================================
 // COMPONENTE PRINCIPALE
 // ============================================
 
@@ -184,13 +436,146 @@ interface ModuloDinamicoProps {
   setUserRole?: (role: 'student' | 'admin') => void;
 }
 
-export default function ModuloDinamico({ module, onBack, isAdmin = false, userRole = 'student', setUserRole }: ModuloDinamicoProps) {
+export default function ModuloDinamico({ module: initialModule, onBack, isAdmin = false, userRole = 'student', setUserRole }: ModuloDinamicoProps) {
+  const [module, setModule] = useState<ModuleJSON>(initialModule);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeTab, setActiveTab] = useState('contenuto');
   const [showSpeechPanel, setShowSpeechPanel] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Stati per modal video
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [editingVideo, setEditingVideo] = useState<{ video: VideoItem | null; index: number } | null>(null);
+  const [isNewVideo, setIsNewVideo] = useState(false);
+
+  // Stati per modal articolo
+  const [showArticleModal, setShowArticleModal] = useState(false);
+  const [editingArticle, setEditingArticle] = useState<{ article: ArticleItem | null; index: number } | null>(null);
+  const [isNewArticle, setIsNewArticle] = useState(false);
 
   const slide = module.slides[currentSlide];
   const progress = ((currentSlide + 1) / module.slides.length) * 100;
+
+  // Funzione per salvare il modulo su Supabase
+  const saveModuleToDb = async (updatedModule: ModuleJSON) => {
+    setIsSaving(true);
+    try {
+      await saveModule(updatedModule);
+      setModule(updatedModule);
+    } catch (err) {
+      console.error('Errore nel salvataggio:', err);
+      alert('Errore nel salvataggio. Riprova.');
+    }
+    setIsSaving(false);
+  };
+
+  // Handler per video
+  const handleEditVideo = (video: VideoItem, index: number) => {
+    setEditingVideo({ video, index });
+    setIsNewVideo(false);
+    setShowVideoModal(true);
+  };
+
+  const handleAddVideo = () => {
+    setEditingVideo({ video: null, index: -1 });
+    setIsNewVideo(true);
+    setShowVideoModal(true);
+  };
+
+  const handleSaveVideo = async (updatedVideo: VideoItem) => {
+    const updatedSlides = module.slides.map((s, idx) => {
+      if (idx === currentSlide) {
+        const videos = s.videos || [];
+        if (isNewVideo) {
+          return { ...s, videos: [...videos, updatedVideo] };
+        } else {
+          return {
+            ...s,
+            videos: videos.map((v, i) => i === editingVideo?.index ? updatedVideo : v)
+          };
+        }
+      }
+      return s;
+    });
+
+    const updatedModule = { ...module, slides: updatedSlides };
+    await saveModuleToDb(updatedModule);
+    setShowVideoModal(false);
+    setEditingVideo(null);
+  };
+
+  const handleDeleteVideo = async () => {
+    if (!editingVideo || editingVideo.index < 0) return;
+
+    const updatedSlides = module.slides.map((s, idx) => {
+      if (idx === currentSlide) {
+        return {
+          ...s,
+          videos: (s.videos || []).filter((_, i) => i !== editingVideo.index)
+        };
+      }
+      return s;
+    });
+
+    const updatedModule = { ...module, slides: updatedSlides };
+    await saveModuleToDb(updatedModule);
+    setShowVideoModal(false);
+    setEditingVideo(null);
+  };
+
+  // Handler per articoli
+  const handleEditArticle = (article: ArticleItem, index: number) => {
+    setEditingArticle({ article, index });
+    setIsNewArticle(false);
+    setShowArticleModal(true);
+  };
+
+  const handleAddArticle = () => {
+    setEditingArticle({ article: null, index: -1 });
+    setIsNewArticle(true);
+    setShowArticleModal(true);
+  };
+
+  const handleSaveArticle = async (updatedArticle: ArticleItem) => {
+    const updatedSlides = module.slides.map((s, idx) => {
+      if (idx === currentSlide) {
+        const articles = s.articles || [];
+        if (isNewArticle) {
+          return { ...s, articles: [...articles, updatedArticle] };
+        } else {
+          return {
+            ...s,
+            articles: articles.map((a, i) => i === editingArticle?.index ? updatedArticle : a)
+          };
+        }
+      }
+      return s;
+    });
+
+    const updatedModule = { ...module, slides: updatedSlides };
+    await saveModuleToDb(updatedModule);
+    setShowArticleModal(false);
+    setEditingArticle(null);
+  };
+
+  const handleDeleteArticle = async () => {
+    if (!editingArticle || editingArticle.index < 0) return;
+
+    const updatedSlides = module.slides.map((s, idx) => {
+      if (idx === currentSlide) {
+        return {
+          ...s,
+          articles: (s.articles || []).filter((_, i) => i !== editingArticle.index)
+        };
+      }
+      return s;
+    });
+
+    const updatedModule = { ...module, slides: updatedSlides };
+    await saveModuleToDb(updatedModule);
+    setShowArticleModal(false);
+    setEditingArticle(null);
+  };
 
   const tabs = [
     { id: 'contenuto', label: 'Contenuto', icon: '📚' },
@@ -347,22 +732,82 @@ export default function ModuloDinamico({ module, onBack, isAdmin = false, userRo
           )}
 
           {activeTab === 'video' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {slide.videos && slide.videos.length > 0 ? (
-                slide.videos.map((video, idx) => <VideoCard key={idx} video={video} />)
-              ) : (
-                <p className="text-gray-500 col-span-2 text-center py-8">Nessun video disponibile per questa slide</p>
+            <div>
+              {/* Pulsante Aggiungi - solo per admin */}
+              {isAdmin && (
+                <div className="mb-4 flex justify-end">
+                  <button
+                    onClick={handleAddVideo}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <span>+</span>
+                    <span>Aggiungi Video</span>
+                  </button>
+                </div>
               )}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {slide.videos && slide.videos.length > 0 ? (
+                  slide.videos.map((video, idx) => (
+                    <div key={idx} className="relative group">
+                      <VideoCard video={video} />
+                      {/* Icona modifica - solo per admin */}
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleEditVideo(video, idx)}
+                          className="absolute top-2 right-2 p-2 bg-white/90 rounded-lg shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-100"
+                          title="Modifica video"
+                        >
+                          <span className="text-lg">✏️</span>
+                        </button>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 col-span-2 text-center py-8">
+                    {isAdmin ? 'Nessun video. Clicca "Aggiungi Video" per aggiungerne uno.' : 'Nessun video disponibile per questa slide'}
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
           {activeTab === 'articoli' && (
-            <div className="space-y-3">
-              {slide.articles && slide.articles.length > 0 ? (
-                slide.articles.map((article, idx) => <ArticleCard key={idx} article={article} />)
-              ) : (
-                <p className="text-gray-500 text-center py-8">Nessun articolo disponibile per questa slide</p>
+            <div>
+              {/* Pulsante Aggiungi - solo per admin */}
+              {isAdmin && (
+                <div className="mb-4 flex justify-end">
+                  <button
+                    onClick={handleAddArticle}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <span>+</span>
+                    <span>Aggiungi Articolo</span>
+                  </button>
+                </div>
               )}
+              <div className="space-y-3">
+                {slide.articles && slide.articles.length > 0 ? (
+                  slide.articles.map((article, idx) => (
+                    <div key={idx} className="relative group">
+                      <ArticleCard article={article} />
+                      {/* Icona modifica - solo per admin */}
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleEditArticle(article, idx)}
+                          className="absolute top-1/2 -translate-y-1/2 right-16 p-2 bg-white/90 rounded-lg shadow-md opacity-0 group-hover:opacity-100 transition-opacity hover:bg-indigo-100"
+                          title="Modifica articolo"
+                        >
+                          <span className="text-lg">✏️</span>
+                        </button>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500 text-center py-8">
+                    {isAdmin ? 'Nessun articolo. Clicca "Aggiungi Articolo" per aggiungerne uno.' : 'Nessun articolo disponibile per questa slide'}
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
@@ -503,6 +948,42 @@ export default function ModuloDinamico({ module, onBack, isAdmin = false, userRo
             </div>
           </div>
         </>
+      )}
+
+      {/* Modal Modifica Video */}
+      {showVideoModal && (
+        <VideoEditModal
+          video={editingVideo?.video || null}
+          onSave={handleSaveVideo}
+          onDelete={!isNewVideo ? handleDeleteVideo : undefined}
+          onClose={() => {
+            setShowVideoModal(false);
+            setEditingVideo(null);
+          }}
+          isNew={isNewVideo}
+        />
+      )}
+
+      {/* Modal Modifica Articolo */}
+      {showArticleModal && (
+        <ArticleEditModal
+          article={editingArticle?.article || null}
+          onSave={handleSaveArticle}
+          onDelete={!isNewArticle ? handleDeleteArticle : undefined}
+          onClose={() => {
+            setShowArticleModal(false);
+            setEditingArticle(null);
+          }}
+          isNew={isNewArticle}
+        />
+      )}
+
+      {/* Indicatore di salvataggio */}
+      {isSaving && (
+        <div className="fixed bottom-4 right-4 bg-indigo-600 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 z-50">
+          <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+          <span>Salvataggio...</span>
+        </div>
       )}
     </div>
   );

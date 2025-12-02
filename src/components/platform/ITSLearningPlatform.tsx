@@ -6,8 +6,6 @@ import Sidebar from './Sidebar';
 import HomeDashboard from './HomeDashboard';
 import PercorsoView from './PercorsoView';
 import PlaceholderView from './PlaceholderView';
-import ModuloAgrifoodTech from '../moduli/ModuloAgrifoodTech';
-import ModuloTrendTecnologici from '../moduli/ModuloTrendTecnologici';
 import ModuloDinamico from '../moduli/ModuloDinamico';
 import AdminNuovoModulo from './AdminNuovoModulo';
 import { getModules, getModuleSync, deleteModule, getModulesSync } from '@/services/moduliStorage';
@@ -548,19 +546,10 @@ const ITSLearningPlatform: React.FC = () => {
     setCurrentView('admin-nuovo-modulo');
   };
 
-  // Render del modulo attivo
+  // Render del modulo attivo - tutti i moduli sono su Supabase
   const renderActiveModule = () => {
     if (!activeModule) return null;
 
-    // Moduli con contenuto hardcoded (usano componenti React dedicati)
-    switch (activeModule) {
-      case 'agrifoodtech':
-        return <ModuloAgrifoodTech onBack={() => setActiveModule(null)} isAdmin={isAdmin} userRole={userRole} setUserRole={setUserRole} />;
-      case 'trend-tecnologici':
-        return <ModuloTrendTecnologici onBack={() => setActiveModule(null)} isAdmin={isAdmin} userRole={userRole} setUserRole={setUserRole} />;
-    }
-
-    // Moduli dinamici generati (contenuto su Supabase)
     const dynamicModule = getModuleSync(activeModule);
     if (dynamicModule) {
       return <ModuloDinamico module={dynamicModule} onBack={() => setActiveModule(null)} isAdmin={isAdmin} userRole={userRole} setUserRole={setUserRole} />;
