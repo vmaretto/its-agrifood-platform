@@ -4,8 +4,11 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { saveModule, generateModuleId, getModule } from '@/services/moduliStorage';
 import { ModuleJSON, SlideJSON } from '@/types/module';
+import { parseModuleContent, ParseResult } from '@/utils/parseModuleJsx';
+import { parseNoteDocenteMd, parseNoteDocenteWithDetails } from '@/utils/parseNoteDocente';
 
 type GenerationStatus = 'idle' | 'loading' | 'success' | 'error';
+type UploadMode = 'direct' | 'ai'; // Modalità caricamento: diretto o con AI
 
 // Info sui moduli statici per permettere upload speech-only
 const STATIC_MODULES_INFO: Record<string, { titolo: string; descrizione: string; icon: string; slides: { title: string; section: string }[] }> = {
@@ -80,15 +83,25 @@ export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCanc
   const [isStaticModule, setIsStaticModule] = useState(false);
   const [staticModuleInfo, setStaticModuleInfo] = useState<typeof STATIC_MODULES_INFO[string] | null>(null);
 
+  // Upload mode: 'direct' (caricamento diretto) o 'ai' (generazione AI)
+  const [uploadMode, setUploadMode] = useState<UploadMode>('direct');
+
   // Content file state
   const [markdownContent, setMarkdownContent] = useState('');
   const [fileName, setFileName] = useState<string | null>(null);
   const [isDragOverContent, setIsDragOverContent] = useState(false);
 
+  // JSX/JSON file state (per caricamento diretto)
+  const [jsxContent, setJsxContent] = useState('');
+  const [jsxFileName, setJsxFileName] = useState<string | null>(null);
+  const [isDragOverJsx, setIsDragOverJsx] = useState(false);
+  const [parseResult, setParseResult] = useState<ParseResult | null>(null);
+
   // Speech file state
   const [speechContent, setSpeechContent] = useState('');
   const [speechFileName, setSpeechFileName] = useState<string | null>(null);
   const [isDragOverSpeech, setIsDragOverSpeech] = useState(false);
+  const [parsedNotes, setParsedNotes] = useState<ReturnType<typeof parseNoteDocenteWithDetails>>([]);
 
   // Generation state
   const [status, setStatus] = useState<GenerationStatus>('idle');
@@ -119,7 +132,65 @@ export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCanc
     }
   }, [editModuleId]);
 
-  // Content file handlers
+  // JSX/JSON file handlers (per caricamento diretto)
+  const handleJsxFileUpload = useCallback((file: File) => {
+    const validExtensions = ['.jsx', '.tsx', '.json', '.js'];
+    const hasValidExt = validExtensions.some(ext => file.name.endsWith(ext));
+
+    if (!hasValidExt) {
+      setErrorMessage('Per favore carica un file JSX, TSX o JSON');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const content = e.target?.result as string;
+      setJsxContent(content);
+      setJsxFileName(file.name);
+      setErrorMessage('');
+      setStatus('idle');
+      setGeneratedModule(null);
+
+      // Prova a parsare immediatamente
+      const result = parseModuleContent(content);
+      setParseResult(result);
+
+      if (!result.success) {
+        setErrorMessage(result.error || 'Errore nel parsing del file');
+      }
+    };
+    reader.readAsText(file);
+  }, []);
+
+  const handleJsxDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOverJsx(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleJsxFileUpload(file);
+  }, [handleJsxFileUpload]);
+
+  const handleJsxDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOverJsx(true);
+  }, []);
+
+  const handleJsxDragLeave = useCallback(() => {
+    setIsDragOverJsx(false);
+  }, []);
+
+  const handleJsxFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) handleJsxFileUpload(file);
+  }, [handleJsxFileUpload]);
+
+  const removeJsxFile = () => {
+    setJsxContent('');
+    setJsxFileName(null);
+    setParseResult(null);
+    setGeneratedModule(null);
+  };
+
+  // Content file handlers (per generazione AI)
   const handleContentFileUpload = useCallback((file: File) => {
     if (!file.name.endsWith('.md')) {
       setErrorMessage('Per favore carica un file Markdown (.md)');
@@ -172,6 +243,14 @@ export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCanc
       setSpeechContent(content);
       setSpeechFileName(file.name);
       setErrorMessage('');
+
+      // Parsa automaticamente le note docente
+      const notes = parseNoteDocenteWithDetails(content);
+      setParsedNotes(notes);
+
+      if (notes.length === 0) {
+        setErrorMessage('Nessuna nota trovata. Assicurati che il file segua il formato "# Slide N: Titolo"');
+      }
     };
     reader.readAsText(file);
   }, []);
@@ -200,9 +279,57 @@ export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCanc
   const removeSpeechFile = () => {
     setSpeechContent('');
     setSpeechFileName(null);
+    setParsedNotes([]);
   };
 
-  // Generate new module from scratch
+  // Caricamento diretto (senza AI): parsa JSX/JSON e associa note docente
+  const processDirectUpload = async () => {
+    if (!parseResult?.success || !parseResult.module) {
+      setErrorMessage('Prima carica un file JSX/JSON valido');
+      return;
+    }
+
+    setStatus('loading');
+    setErrorMessage('');
+
+    try {
+      let moduleToSave = { ...parseResult.module };
+
+      // Se ci sono note docente, associale alle slide
+      if (speechContent && parsedNotes.length > 0) {
+        const notesMap = parseNoteDocenteMd(speechContent);
+
+        moduleToSave = {
+          ...moduleToSave,
+          slides: moduleToSave.slides.map((slide) => {
+            const noteForSlide = notesMap.get(slide.id);
+            if (noteForSlide) {
+              return { ...slide, noteDocente: noteForSlide };
+            }
+            return slide;
+          }),
+        };
+      }
+
+      // Genera ID se mancante
+      if (!moduleToSave.id) {
+        moduleToSave.id = generateModuleId(moduleToSave.titolo);
+      }
+
+      // Aggiungi timestamp se mancante
+      if (!moduleToSave.createdAt) {
+        moduleToSave.createdAt = new Date().toISOString();
+      }
+
+      setGeneratedModule(moduleToSave);
+      setStatus('success');
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Errore nel processing');
+      setStatus('error');
+    }
+  };
+
+  // Generate new module from scratch (con AI)
   const generateModule = async () => {
     if (!markdownContent) {
       setErrorMessage('Carica prima un file Markdown con i contenuti');
@@ -371,8 +498,12 @@ export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCanc
   const resetForm = () => {
     setMarkdownContent('');
     setFileName(null);
+    setJsxContent('');
+    setJsxFileName(null);
+    setParseResult(null);
     setSpeechContent('');
     setSpeechFileName(null);
+    setParsedNotes([]);
     setStatus('idle');
     setErrorMessage('');
     setGeneratedModule(null);
@@ -894,151 +1025,330 @@ Testo dello speech...
     );
   }
 
-  // Render Create Mode UI (original)
+  // Render Create Mode UI
   return (
     <div className="p-8">
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">🚀 Genera Nuovo Modulo</h1>
-        <p className="text-gray-500">Carica i file Markdown e genera automaticamente un modulo interattivo</p>
+        <h1 className="text-2xl font-bold text-gray-800">🚀 Nuovo Modulo</h1>
+        <p className="text-gray-500">Carica i file e crea un nuovo modulo didattico</p>
+      </div>
+
+      {/* Mode Toggle */}
+      <div className="mb-6 flex gap-2">
+        <button
+          onClick={() => setUploadMode('direct')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            uploadMode === 'direct'
+              ? 'bg-emerald-600 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          📦 Caricamento Diretto
+        </button>
+        <button
+          onClick={() => setUploadMode('ai')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            uploadMode === 'ai'
+              ? 'bg-indigo-600 text-white'
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          🤖 Genera con AI
+        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-8">
-        {/* Left Column - Upload & Preview */}
+        {/* Left Column - Upload */}
         <div className="space-y-6">
-          {/* Content Drop Zone */}
-          <div>
-            <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
-              <span>📄</span> Contenuto del Modulo
-              <span className="text-red-500">*</span>
-            </h3>
-            <div
-              onDrop={handleContentDrop}
-              onDragOver={handleContentDragOver}
-              onDragLeave={handleContentDragLeave}
-              className={`bg-white rounded-2xl shadow-sm p-6 border-2 border-dashed transition-colors ${
-                isDragOverContent
-                  ? 'border-indigo-500 bg-indigo-50'
-                  : fileName
-                  ? 'border-emerald-500 bg-emerald-50'
-                  : 'border-gray-300 hover:border-gray-400'
-              }`}
-            >
-              {fileName ? (
-                <div className="text-center">
-                  <div className="text-3xl mb-2">📄</div>
-                  <div className="font-semibold text-gray-800">{fileName}</div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    {markdownContent.length.toLocaleString()} caratteri
-                  </div>
-                  <button
-                    onClick={() => { setMarkdownContent(''); setFileName(null); setGeneratedModule(null); }}
-                    className="mt-3 text-sm text-red-600 hover:text-red-700"
-                  >
-                    Rimuovi
-                  </button>
+          {/* Modalità Caricamento Diretto */}
+          {uploadMode === 'direct' && (
+            <>
+              {/* JSX/JSON Drop Zone */}
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <span>📦</span> Modulo (JSX/JSON)
+                  <span className="text-red-500">*</span>
+                </h3>
+                <div
+                  onDrop={handleJsxDrop}
+                  onDragOver={handleJsxDragOver}
+                  onDragLeave={handleJsxDragLeave}
+                  className={`bg-white rounded-2xl shadow-sm p-6 border-2 border-dashed transition-colors ${
+                    isDragOverJsx
+                      ? 'border-emerald-500 bg-emerald-50'
+                      : jsxFileName
+                      ? parseResult?.success
+                        ? 'border-emerald-500 bg-emerald-50'
+                        : 'border-red-500 bg-red-50'
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  {jsxFileName ? (
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">{parseResult?.success ? '✅' : '❌'}</div>
+                      <div className="font-semibold text-gray-800">{jsxFileName}</div>
+                      {parseResult?.success && parseResult.module && (
+                        <div className="text-sm text-emerald-600 mt-1">
+                          {parseResult.module.slides.length} slide trovate
+                        </div>
+                      )}
+                      {!parseResult?.success && (
+                        <div className="text-sm text-red-600 mt-1">
+                          Errore nel parsing
+                        </div>
+                      )}
+                      <button
+                        onClick={removeJsxFile}
+                        className="mt-3 text-sm text-red-600 hover:text-red-700"
+                      >
+                        Rimuovi
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">📦</div>
+                      <div className="font-medium text-gray-800 mb-1">
+                        Trascina qui il file .jsx, .tsx o .json
+                      </div>
+                      <div className="text-sm text-gray-500 mb-3">con la struttura del modulo</div>
+                      <label className="cursor-pointer">
+                        <span className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors text-sm">
+                          Seleziona file
+                        </span>
+                        <input
+                          type="file"
+                          accept=".jsx,.tsx,.json,.js"
+                          onChange={handleJsxFileSelect}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="text-center">
-                  <div className="text-3xl mb-2">📤</div>
-                  <div className="font-medium text-gray-800 mb-1">
-                    Trascina qui il file .md
-                  </div>
-                  <div className="text-sm text-gray-500 mb-3">con i contenuti delle slide</div>
-                  <label className="cursor-pointer">
-                    <span className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors text-sm">
-                      Seleziona file
-                    </span>
-                    <input
-                      type="file"
-                      accept=".md"
-                      onChange={handleContentFileSelect}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              )}
-            </div>
-          </div>
+              </div>
 
-          {/* Speech Drop Zone */}
-          <div>
-            <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
-              <span>🎤</span> Note Docente
-              <span className="text-xs text-gray-400 font-normal">(opzionale)</span>
-            </h3>
-            <div
-              onDrop={handleSpeechDrop}
-              onDragOver={handleSpeechDragOver}
-              onDragLeave={handleSpeechDragLeave}
-              className={`bg-white rounded-2xl shadow-sm p-6 border-2 border-dashed transition-colors ${
-                isDragOverSpeech
-                  ? 'border-purple-500 bg-purple-50'
-                  : speechFileName
-                  ? 'border-purple-500 bg-purple-50'
-                  : 'border-gray-300 hover:border-gray-400'
-              }`}
-            >
-              {speechFileName ? (
-                <div className="text-center">
-                  <div className="text-3xl mb-2">🎤</div>
-                  <div className="font-semibold text-gray-800">{speechFileName}</div>
-                  <div className="text-sm text-gray-500 mt-1">
-                    {speechContent.length.toLocaleString()} caratteri
-                  </div>
-                  <button
-                    onClick={removeSpeechFile}
-                    className="mt-3 text-sm text-red-600 hover:text-red-700"
-                  >
-                    Rimuovi
-                  </button>
+              {/* Speech Drop Zone */}
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <span>🎤</span> Note Docente (MD)
+                  <span className="text-xs text-gray-400 font-normal">(opzionale)</span>
+                </h3>
+                <div
+                  onDrop={handleSpeechDrop}
+                  onDragOver={handleSpeechDragOver}
+                  onDragLeave={handleSpeechDragLeave}
+                  className={`bg-white rounded-2xl shadow-sm p-6 border-2 border-dashed transition-colors ${
+                    isDragOverSpeech
+                      ? 'border-purple-500 bg-purple-50'
+                      : speechFileName
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  {speechFileName ? (
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">🎤</div>
+                      <div className="font-semibold text-gray-800">{speechFileName}</div>
+                      <div className="text-sm text-purple-600 mt-1">
+                        {parsedNotes.length} note trovate
+                      </div>
+                      <button
+                        onClick={removeSpeechFile}
+                        className="mt-3 text-sm text-red-600 hover:text-red-700"
+                      >
+                        Rimuovi
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">🎤</div>
+                      <div className="font-medium text-gray-800 mb-1">
+                        Trascina qui il file .md
+                      </div>
+                      <div className="text-sm text-gray-500 mb-3">con speech e note per ogni slide</div>
+                      <label className="cursor-pointer">
+                        <span className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm">
+                          Seleziona file
+                        </span>
+                        <input
+                          type="file"
+                          accept=".md"
+                          onChange={handleSpeechFileSelect}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="text-center">
-                  <div className="text-3xl mb-2">🎤</div>
-                  <div className="font-medium text-gray-800 mb-1">
-                    Trascina qui il file .md
-                  </div>
-                  <div className="text-sm text-gray-500 mb-3">con speech e note per ogni slide</div>
-                  <label className="cursor-pointer">
-                    <span className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm">
-                      Seleziona file
-                    </span>
-                    <input
-                      type="file"
-                      accept=".md"
-                      onChange={handleSpeechFileSelect}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              )}
-            </div>
-          </div>
+              </div>
 
-          {/* Generate Button */}
-          {markdownContent && status !== 'success' && (
-            <button
-              onClick={generateModule}
-              disabled={status === 'loading'}
-              className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${
-                status === 'loading'
-                  ? 'bg-gray-300 text-gray-500 cursor-wait'
-                  : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
-              }`}
-            >
-              {status === 'loading' ? (
-                <span className="flex items-center justify-center gap-3">
-                  <span className="animate-spin">⏳</span>
-                  Generazione in corso con Claude AI...
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <span>🚀</span>
-                  Genera Modulo con AI
-                  {speechFileName && <span className="text-sm opacity-75">(+ Note Docente)</span>}
-                </span>
+              {/* Process Button (Caricamento Diretto) */}
+              {parseResult?.success && status !== 'success' && (
+                <button
+                  onClick={processDirectUpload}
+                  disabled={status === 'loading'}
+                  className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${
+                    status === 'loading'
+                      ? 'bg-gray-300 text-gray-500 cursor-wait'
+                      : 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white hover:from-emerald-700 hover:to-teal-700 shadow-lg hover:shadow-xl'
+                  }`}
+                >
+                  {status === 'loading' ? (
+                    <span className="flex items-center justify-center gap-3">
+                      <span className="animate-spin">⏳</span>
+                      Elaborazione...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <span>📦</span>
+                      Crea Modulo
+                      {speechFileName && <span className="text-sm opacity-75">(+ Note Docente)</span>}
+                    </span>
+                  )}
+                </button>
               )}
-            </button>
+            </>
+          )}
+
+          {/* Modalità Generazione AI */}
+          {uploadMode === 'ai' && (
+            <>
+              {/* Content Drop Zone */}
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <span>📄</span> Contenuto del Modulo
+                  <span className="text-red-500">*</span>
+                </h3>
+                <div
+                  onDrop={handleContentDrop}
+                  onDragOver={handleContentDragOver}
+                  onDragLeave={handleContentDragLeave}
+                  className={`bg-white rounded-2xl shadow-sm p-6 border-2 border-dashed transition-colors ${
+                    isDragOverContent
+                      ? 'border-indigo-500 bg-indigo-50'
+                      : fileName
+                      ? 'border-emerald-500 bg-emerald-50'
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  {fileName ? (
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">📄</div>
+                      <div className="font-semibold text-gray-800">{fileName}</div>
+                      <div className="text-sm text-gray-500 mt-1">
+                        {markdownContent.length.toLocaleString()} caratteri
+                      </div>
+                      <button
+                        onClick={() => { setMarkdownContent(''); setFileName(null); setGeneratedModule(null); }}
+                        className="mt-3 text-sm text-red-600 hover:text-red-700"
+                      >
+                        Rimuovi
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">📤</div>
+                      <div className="font-medium text-gray-800 mb-1">
+                        Trascina qui il file .md
+                      </div>
+                      <div className="text-sm text-gray-500 mb-3">con i contenuti delle slide</div>
+                      <label className="cursor-pointer">
+                        <span className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors text-sm">
+                          Seleziona file
+                        </span>
+                        <input
+                          type="file"
+                          accept=".md"
+                          onChange={handleContentFileSelect}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Speech Drop Zone */}
+              <div>
+                <h3 className="font-semibold text-gray-700 mb-2 flex items-center gap-2">
+                  <span>🎤</span> Note Docente
+                  <span className="text-xs text-gray-400 font-normal">(opzionale)</span>
+                </h3>
+                <div
+                  onDrop={handleSpeechDrop}
+                  onDragOver={handleSpeechDragOver}
+                  onDragLeave={handleSpeechDragLeave}
+                  className={`bg-white rounded-2xl shadow-sm p-6 border-2 border-dashed transition-colors ${
+                    isDragOverSpeech
+                      ? 'border-purple-500 bg-purple-50'
+                      : speechFileName
+                      ? 'border-purple-500 bg-purple-50'
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                >
+                  {speechFileName ? (
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">🎤</div>
+                      <div className="font-semibold text-gray-800">{speechFileName}</div>
+                      <div className="text-sm text-gray-500 mt-1">
+                        {speechContent.length.toLocaleString()} caratteri
+                      </div>
+                      <button
+                        onClick={removeSpeechFile}
+                        className="mt-3 text-sm text-red-600 hover:text-red-700"
+                      >
+                        Rimuovi
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="text-3xl mb-2">🎤</div>
+                      <div className="font-medium text-gray-800 mb-1">
+                        Trascina qui il file .md
+                      </div>
+                      <div className="text-sm text-gray-500 mb-3">con speech e note per ogni slide</div>
+                      <label className="cursor-pointer">
+                        <span className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm">
+                          Seleziona file
+                        </span>
+                        <input
+                          type="file"
+                          accept=".md"
+                          onChange={handleSpeechFileSelect}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Generate Button (AI) */}
+              {markdownContent && status !== 'success' && (
+                <button
+                  onClick={generateModule}
+                  disabled={status === 'loading'}
+                  className={`w-full py-4 rounded-xl font-semibold text-lg transition-all ${
+                    status === 'loading'
+                      ? 'bg-gray-300 text-gray-500 cursor-wait'
+                      : 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:from-indigo-700 hover:to-purple-700 shadow-lg hover:shadow-xl'
+                  }`}
+                >
+                  {status === 'loading' ? (
+                    <span className="flex items-center justify-center gap-3">
+                      <span className="animate-spin">⏳</span>
+                      Generazione in corso con Claude AI...
+                    </span>
+                  ) : (
+                    <span className="flex items-center justify-center gap-2">
+                      <span>🚀</span>
+                      Genera Modulo con AI
+                      {speechFileName && <span className="text-sm opacity-75">(+ Note Docente)</span>}
+                    </span>
+                  )}
+                </button>
+              )}
+            </>
           )}
 
           {/* Error Message */}
@@ -1053,30 +1363,25 @@ Testo dello speech...
           )}
         </div>
 
-        {/* Right Column - Generated Module Preview */}
+        {/* Right Column - Preview */}
         <div>
           {status === 'loading' && (
             <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
               <div className="animate-pulse">
-                <div className="text-6xl mb-4">🤖</div>
+                <div className="text-6xl mb-4">{uploadMode === 'direct' ? '📦' : '🤖'}</div>
                 <h3 className="text-xl font-semibold text-gray-800 mb-2">
-                  Claude sta elaborando...
+                  {uploadMode === 'direct' ? 'Elaborazione in corso...' : 'Claude sta elaborando...'}
                 </h3>
                 <p className="text-gray-500">
-                  Sto analizzando il contenuto e generando il modulo interattivo.
-                  <br />
-                  Questo potrebbe richiedere 30-60 secondi.
+                  {uploadMode === 'direct'
+                    ? 'Sto parsando il file e associando le note...'
+                    : 'Sto analizzando il contenuto e generando il modulo interattivo.'}
                 </p>
                 {speechFileName && (
                   <p className="text-purple-600 mt-2 text-sm">
                     🎤 Integrazione note docente in corso...
                   </p>
                 )}
-                <div className="mt-6 flex justify-center">
-                  <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-indigo-500 animate-pulse" style={{ width: '60%' }} />
-                  </div>
-                </div>
               </div>
             </div>
           )}
@@ -1086,13 +1391,15 @@ Testo dello speech...
               <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4">
                 <div className="flex items-center gap-2 text-emerald-700">
                   <span>✅</span>
-                  <span className="font-medium">Modulo generato con successo!</span>
+                  <span className="font-medium">
+                    {uploadMode === 'direct' ? 'Modulo pronto!' : 'Modulo generato con successo!'}
+                  </span>
                 </div>
               </div>
 
               <div className="bg-white rounded-2xl shadow-sm p-6">
                 <div className="flex items-center gap-4 mb-6">
-                  <span className="text-4xl">{generatedModule.icon}</span>
+                  <span className="text-4xl">{generatedModule.icon || '📚'}</span>
                   <div>
                     <h3 className="text-xl font-bold text-gray-800">{generatedModule.titolo}</h3>
                     <p className="text-gray-500">{generatedModule.descrizione}</p>
@@ -1157,9 +1464,63 @@ Testo dello speech...
             </div>
           )}
 
-          {status === 'idle' && !markdownContent && (
+          {/* Help Panel - Caricamento Diretto */}
+          {status === 'idle' && uploadMode === 'direct' && !jsxFileName && (
             <div className="bg-white rounded-2xl shadow-sm p-8">
-              <h3 className="font-semibold text-gray-800 mb-4">💡 Come funziona</h3>
+              <h3 className="font-semibold text-gray-800 mb-4">📦 Caricamento Diretto</h3>
+              <p className="text-gray-600 mb-4">
+                Carica un file JSON con la struttura del modulo. Nessuna elaborazione AI necessaria.
+              </p>
+
+              <div className="mt-6 p-4 bg-emerald-50 rounded-xl">
+                <h4 className="font-medium text-emerald-800 mb-2">Formato JSON richiesto</h4>
+                <pre className="text-xs text-emerald-700 bg-emerald-100 rounded p-2 overflow-x-auto">
+{`{
+  "titolo": "Nome Modulo",
+  "descrizione": "Descrizione...",
+  "icon": "🌱",
+  "durata": "2-3 ore",
+  "slides": [
+    {
+      "id": 1,
+      "section": "Introduzione",
+      "title": "Titolo Slide",
+      "contenuto": "Testo..."
+    }
+  ]
+}`}
+                </pre>
+              </div>
+
+              <div className="mt-4 p-4 bg-purple-50 rounded-xl">
+                <h4 className="font-medium text-purple-800 mb-2">🎤 Formato Note Docente</h4>
+                <pre className="text-xs text-purple-700 bg-purple-100 rounded p-2 overflow-x-auto">
+{`# Slide 1: Titolo
+
+## Durata
+5 minuti
+
+## Obiettivi
+- Obiettivo 1
+- Obiettivo 2
+
+## Speech
+Testo speech...
+
+## Note per il Docente
+- Nota 1
+
+## Domande Suggerite
+- Domanda 1?`}
+                </pre>
+              </div>
+            </div>
+          )}
+
+          {/* Help Panel - AI */}
+          {status === 'idle' && uploadMode === 'ai' && !markdownContent && (
+            <div className="bg-white rounded-2xl shadow-sm p-8">
+              <h3 className="font-semibold text-gray-800 mb-4">🤖 Generazione con AI</h3>
               <div className="space-y-4">
                 <div className="flex items-start gap-3">
                   <span className="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center text-sm font-bold">1</span>
@@ -1183,32 +1544,26 @@ Testo dello speech...
                   </div>
                 </div>
               </div>
+            </div>
+          )}
 
-              <div className="mt-6 p-4 bg-purple-50 rounded-xl">
-                <h4 className="font-medium text-purple-800 mb-2">🎤 Formato file Note Docente</h4>
-                <pre className="text-xs text-purple-700 bg-purple-100 rounded p-2 overflow-x-auto">
-{`# Titolo Slide 1
-
-**Durata:** 8-10 min
-
-**Obiettivi:**
-- Obiettivo 1
-- Obiettivo 2
-
-**Speech:**
-Testo dello speech...
-
-**Note:**
-- Nota per il docente
-
-**Domande:**
-- Domanda suggerita?
-
----
-
-# Titolo Slide 2
-...`}
-                </pre>
+          {/* Preview delle note parsate (Caricamento Diretto) */}
+          {status === 'idle' && uploadMode === 'direct' && parseResult?.success && parsedNotes.length > 0 && (
+            <div className="bg-white rounded-2xl shadow-sm p-6">
+              <h4 className="font-semibold text-gray-700 mb-4">📋 Note Docente Trovate</h4>
+              <div className="space-y-2 max-h-64 overflow-y-auto">
+                {parsedNotes.map((note, idx) => (
+                  <div key={idx} className="flex items-center gap-3 p-2 bg-purple-50 rounded-lg">
+                    <span className="w-6 h-6 bg-purple-100 text-purple-700 rounded-full flex items-center justify-center text-xs font-bold">
+                      {note.slideNumber}
+                    </span>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-gray-800">{note.slideTitle}</div>
+                      <div className="text-xs text-gray-500">{note.note.durata}</div>
+                    </div>
+                    <span className="text-emerald-500">✓</span>
+                  </div>
+                ))}
               </div>
             </div>
           )}
