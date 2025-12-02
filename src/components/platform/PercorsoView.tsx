@@ -2,6 +2,8 @@
 'use client';
 
 import React from 'react';
+import { getModules } from '@/services/moduliStorage';
+import { ModuleJSON } from '@/types/module';
 
 interface Modulo {
   id: string;
@@ -13,132 +15,39 @@ interface Modulo {
   descrizione?: string;
 }
 
-interface Giornata {
-  numero: number;
-  titolo: string;
-  descrizione: string;
-  stato: 'completato' | 'in-corso' | 'bloccato';
-  progresso: number;
-  moduli: Modulo[];
-}
-
 interface PercorsoViewProps {
   setActiveModule: (module: string | null) => void;
 }
 
 const PercorsoView: React.FC<PercorsoViewProps> = ({ setActiveModule }) => {
-  const giornate: Giornata[] = [
-    {
-      numero: 1,
-      titolo: 'Fondamenti AgrifoodTech',
-      descrizione: 'Contesto, tendenze e tecnologie chiave del settore',
-      stato: 'in-corso',
-      progresso: 40,
-      moduli: [
-        {
-          id: 'agrifoodtech',
-          titolo: 'Tendenze AgrifoodTech',
-          tipo: 'contenuto',
-          durata: '2h',
-          stato: 'in-corso',
-          progresso: 40,
-          descrizione: '10 slide interattive su supply chain, sostenibilità, automazione'
-        },
-        {
-          id: 'trend-tecnologici',
-          titolo: 'Trend Tecnologici 2026+',
-          tipo: 'contenuto',
-          durata: '2.5h',
-          stato: 'in-corso',
-          progresso: 0,
-          descrizione: '12 slide su AI, IoT, Blockchain, Quantum, Vino digitale'
-        },
-        {
-          id: 'quiz-1',
-          titolo: 'Quiz di verifica',
-          tipo: 'quiz',
-          durata: '15min',
-          stato: 'bloccato',
-          progresso: 0,
-        },
-        {
-          id: 'case-1',
-          titolo: 'Case Study: Barilla',
-          tipo: 'case-study',
-          durata: '45min',
-          stato: 'bloccato',
-          progresso: 0,
-        },
-      ],
-    },
-    {
-      numero: 2,
-      titolo: 'Supply Chain e Blockchain',
-      descrizione: 'Tracciabilità, trasparenza e sicurezza alimentare',
-      stato: 'bloccato',
-      progresso: 0,
-      moduli: [
-        {
-          id: 'blockchain',
-          titolo: 'Blockchain per il Food',
-          tipo: 'contenuto',
-          durata: '1.5h',
-          stato: 'bloccato',
-          progresso: 0,
-        },
-        {
-          id: 'lab-1',
-          titolo: 'Lab: Crea la tua tracciabilità',
-          tipo: 'lab',
-          durata: '2h',
-          stato: 'bloccato',
-          progresso: 0,
-        },
-      ],
-    },
-    {
-      numero: 3,
-      titolo: 'Sostenibilità e Normative',
-      descrizione: 'Farm to Fork, ESG, certificazioni e compliance',
-      stato: 'bloccato',
-      progresso: 0,
-      moduli: [
-        {
-          id: 'sostenibilita',
-          titolo: 'Sostenibilità nel Food',
-          tipo: 'contenuto',
-          durata: '1.5h',
-          stato: 'bloccato',
-          progresso: 0,
-        },
-        {
-          id: 'challenge-1',
-          titolo: 'Challenge: Progetta un vino sostenibile',
-          tipo: 'challenge',
-          durata: '3h',
-          stato: 'bloccato',
-          progresso: 0,
-        },
-      ],
-    },
-    {
-      numero: 4,
-      titolo: 'Hackathon Finale',
-      descrizione: 'Progetta una soluzione innovativa per l\'agrifood',
-      stato: 'bloccato',
-      progresso: 0,
-      moduli: [
-        {
-          id: 'hackathon',
-          titolo: 'Hackathon: AgriFood Innovation',
-          tipo: 'hackathon',
-          durata: '8h',
-          stato: 'bloccato',
-          progresso: 0,
-        },
-      ],
-    },
-  ];
+  const [moduliDisponibili, setModuliDisponibili] = React.useState<ModuleJSON[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+
+  // Carica i moduli da Supabase
+  React.useEffect(() => {
+    const loadModules = async () => {
+      setIsLoading(true);
+      try {
+        const modules = await getModules();
+        setModuliDisponibili(modules);
+      } catch (err) {
+        console.error('Error loading modules:', err);
+      }
+      setIsLoading(false);
+    };
+    loadModules();
+  }, []);
+
+  // Converti i moduli da Supabase nel formato Modulo per la visualizzazione
+  const moduli: Modulo[] = moduliDisponibili.map((m, idx) => ({
+    id: m.id,
+    titolo: m.titolo,
+    tipo: 'contenuto' as const,
+    durata: m.durata || '1h',
+    stato: idx === 0 ? 'in-corso' : 'in-corso', // Tutti accessibili
+    progresso: 0,
+    descrizione: m.descrizione,
+  }));
 
   const tipoIcons: Record<Modulo['tipo'], string> = {
     contenuto: '📚',
@@ -166,161 +75,86 @@ const PercorsoView: React.FC<PercorsoViewProps> = ({ setActiveModule }) => {
 
   const handleModuleClick = (modulo: Modulo) => {
     if (modulo.stato === 'bloccato') return;
-    
-    // Mappa degli ID modulo ai nomi dei componenti
-    const moduleMap: Record<string, string> = {
-      'agrifoodtech': 'agrifoodtech',
-      'trend-tecnologici': 'trend-tecnologici',
-      // Aggiungi altri moduli qui quando saranno pronti
-    };
-
-    if (moduleMap[modulo.id]) {
-      setActiveModule(moduleMap[modulo.id]);
-    }
+    // Tutti i moduli sono ora dinamici su Supabase
+    setActiveModule(modulo.id);
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-8 flex items-center justify-center">
+        <div className="text-gray-500">Caricamento moduli...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">📚 Percorso Formativo</h1>
-        <p className="text-gray-500">4 giornate • 32 ore totali</p>
+        <h1 className="text-2xl font-bold text-gray-800">Percorso Formativo</h1>
+        <p className="text-gray-500">{moduli.length} moduli disponibili</p>
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-4 gap-4 mb-8">
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <div className="text-2xl mb-1">📅</div>
-          <div className="text-2xl font-bold text-gray-800">4</div>
-          <div className="text-sm text-gray-500">Giornate</div>
-        </div>
+      <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <div className="text-2xl mb-1">📚</div>
-          <div className="text-2xl font-bold text-gray-800">8</div>
+          <div className="text-2xl font-bold text-gray-800">{moduli.length}</div>
           <div className="text-sm text-gray-500">Moduli</div>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
-          <div className="text-2xl mb-1">⏱️</div>
-          <div className="text-2xl font-bold text-gray-800">32h</div>
+          <div className="text-2xl mb-1">📝</div>
+          <div className="text-2xl font-bold text-gray-800">
+            {moduli.reduce((acc, m) => {
+              const match = m.durata.match(/(\d+)/);
+              return acc + (match ? parseInt(match[1]) : 0);
+            }, 0)}h
+          </div>
           <div className="text-sm text-gray-500">Totali</div>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <div className="text-2xl mb-1">🎯</div>
-          <div className="text-2xl font-bold text-emerald-600">20%</div>
+          <div className="text-2xl font-bold text-emerald-600">0%</div>
           <div className="text-sm text-gray-500">Completato</div>
         </div>
       </div>
 
-      {/* Giornate */}
-      <div className="space-y-6">
-        {giornate.map((giornata, idx) => (
-          <div key={idx} className="bg-white rounded-2xl shadow-sm overflow-hidden">
-            {/* Header Giornata */}
-            <div
-              className={`p-6 ${
-                giornata.stato === 'bloccato'
-                  ? 'bg-gray-50'
-                  : 'bg-gradient-to-r from-emerald-50 to-teal-50'
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div
-                    className={`w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold ${
-                      giornata.stato === 'bloccato'
-                        ? 'bg-gray-200 text-gray-400'
-                        : 'bg-emerald-500 text-white'
-                    }`}
-                  >
-                    {giornata.numero}
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-800">{giornata.titolo}</h3>
-                    <p className="text-sm text-gray-500">{giornata.descrizione}</p>
-                  </div>
-                </div>
-                {giornata.stato !== 'bloccato' && (
-                  <div className="text-right">
-                    <div className="text-sm text-gray-500 mb-1">Progresso</div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-emerald-500 transition-all duration-500"
-                          style={{ width: `${giornata.progresso}%` }}
-                        ></div>
-                      </div>
-                      <span className="text-sm font-medium text-gray-600">
-                        {giornata.progresso}%
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {giornata.stato === 'bloccato' && (
-                  <div className="flex items-center gap-2 text-gray-400">
-                    <span>🔒</span>
-                    <span className="text-sm">Completa la giornata precedente</span>
-                  </div>
-                )}
-              </div>
+      {/* Lista Moduli */}
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="p-6 bg-gradient-to-r from-emerald-50 to-teal-50">
+          <h3 className="font-semibold text-gray-800">Moduli Disponibili</h3>
+          <p className="text-sm text-gray-500">Clicca su un modulo per iniziare</p>
+        </div>
+        <div className="p-4">
+          {moduli.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              Nessun modulo disponibile. Contatta l'amministratore.
             </div>
-
-            {/* Lista Moduli */}
-            <div className="p-4">
-              <div className="space-y-2">
-                {giornata.moduli.map((modulo, midx) => (
-                  <div
-                    key={midx}
-                    onClick={() => handleModuleClick(modulo)}
-                    className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
-                      statoColors[modulo.stato]
-                    } ${
-                      modulo.stato !== 'bloccato'
-                        ? 'cursor-pointer hover:shadow-md'
-                        : 'cursor-not-allowed'
-                    }`}
-                  >
-                    <div className={`text-2xl ${tipoColors[modulo.tipo]}`}>
-                      {tipoIcons[modulo.tipo]}
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-medium">{modulo.titolo}</div>
-                      <div className="text-sm opacity-70">{modulo.durata}</div>
-                      {modulo.descrizione && (
-                        <div className="text-xs opacity-60 mt-1">{modulo.descrizione}</div>
-                      )}
-                    </div>
-                    {modulo.stato === 'in-corso' && modulo.progresso > 0 && (
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 h-2 bg-white rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-blue-500"
-                            style={{ width: `${modulo.progresso}%` }}
-                          ></div>
-                        </div>
-                        <span className="text-sm font-medium">{modulo.progresso}%</span>
-                      </div>
+          ) : (
+            <div className="space-y-2">
+              {moduli.map((modulo, idx) => (
+                <div
+                  key={modulo.id}
+                  onClick={() => handleModuleClick(modulo)}
+                  className={`flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${
+                    statoColors[modulo.stato]
+                  } cursor-pointer hover:shadow-md`}
+                >
+                  <div className={`text-2xl ${tipoColors[modulo.tipo]}`}>
+                    {tipoIcons[modulo.tipo]}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-medium">{modulo.titolo}</div>
+                    <div className="text-sm opacity-70">{modulo.durata}</div>
+                    {modulo.descrizione && (
+                      <div className="text-xs opacity-60 mt-1">{modulo.descrizione}</div>
                     )}
-                    {modulo.stato === 'completato' && <span className="text-xl">✅</span>}
-                    {modulo.stato === 'bloccato' && <span className="text-xl">🔒</span>}
-                    {modulo.stato === 'in-corso' && <span className="text-xl">→</span>}
                   </div>
-                ))}
-              </div>
+                  <span className="text-xl">→</span>
+                </div>
+              ))}
             </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Legend */}
-      <div className="mt-8 bg-white rounded-xl p-4 shadow-sm">
-        <h4 className="font-semibold text-gray-700 mb-3">📖 Legenda Tipologie</h4>
-        <div className="flex flex-wrap gap-4">
-          {Object.entries(tipoIcons).map(([tipo, icon]) => (
-            <div key={tipo} className="flex items-center gap-2 text-sm">
-              <span className={tipoColors[tipo as Modulo['tipo']]}>{icon}</span>
-              <span className="text-gray-600 capitalize">{tipo.replace('-', ' ')}</span>
-            </div>
-          ))}
+          )}
         </div>
       </div>
     </div>

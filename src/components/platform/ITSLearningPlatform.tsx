@@ -6,8 +6,6 @@ import Sidebar from './Sidebar';
 import HomeDashboard from './HomeDashboard';
 import PercorsoView from './PercorsoView';
 import PlaceholderView from './PlaceholderView';
-import ModuloAgrifoodTech from '../moduli/ModuloAgrifoodTech';
-import ModuloTrendTecnologici from '../moduli/ModuloTrendTecnologici';
 import ModuloDinamico from '../moduli/ModuloDinamico';
 import AdminNuovoModulo from './AdminNuovoModulo';
 import { getModules, getModuleSync, deleteModule, getModulesSync } from '@/services/moduliStorage';
@@ -138,16 +136,12 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule }: { setActiv
   const [modules, setModules] = React.useState<ModuleJSON[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  // Carica i moduli da Supabase (inizializza quelli statici se non esistono)
+  // Carica i moduli da Supabase
   React.useEffect(() => {
     const loadModules = async () => {
       setIsLoading(true);
       try {
-        // Prima inizializza i moduli statici se non esistono
-        const { initializeStaticModules } = await import('@/services/supabaseModules');
-        await initializeStaticModules();
-
-        // Poi carica tutti i moduli
+        // Carica tutti i moduli da Supabase
         const allModules = await getModules();
         setModules(allModules);
       } catch (err) {
@@ -552,23 +546,15 @@ const ITSLearningPlatform: React.FC = () => {
     setCurrentView('admin-nuovo-modulo');
   };
 
-  // Render del modulo attivo
+  // Render del modulo attivo - tutti i moduli sono ora dinamici su Supabase
   const renderActiveModule = () => {
-    switch (activeModule) {
-      case 'agrifoodtech':
-        return <ModuloAgrifoodTech onBack={() => setActiveModule(null)} isAdmin={isAdmin} userRole={userRole} setUserRole={setUserRole} />;
-      case 'trend-tecnologici':
-        return <ModuloTrendTecnologici onBack={() => setActiveModule(null)} isAdmin={isAdmin} userRole={userRole} setUserRole={setUserRole} />;
-      default:
-        // Controlla se è un modulo dinamico generato (usa versione sincrona per rendering)
-        if (activeModule) {
-          const dynamicModule = getModuleSync(activeModule);
-          if (dynamicModule) {
-            return <ModuloDinamico module={dynamicModule} onBack={() => setActiveModule(null)} isAdmin={isAdmin} userRole={userRole} setUserRole={setUserRole} />;
-          }
-        }
-        return null;
+    if (!activeModule) return null;
+
+    const dynamicModule = getModuleSync(activeModule);
+    if (dynamicModule) {
+      return <ModuloDinamico module={dynamicModule} onBack={() => setActiveModule(null)} isAdmin={isAdmin} userRole={userRole} setUserRole={setUserRole} />;
     }
+    return null;
   };
 
   // Se c'è un modulo attivo, mostra il modulo a schermo intero
