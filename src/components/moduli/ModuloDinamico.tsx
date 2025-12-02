@@ -6,6 +6,7 @@ import { ModuleJSON, SlideJSON, StatItem, VideoItem, ArticleItem, LinkItem, Quiz
 import { saveModule } from '@/services/moduliStorage';
 import { saveQuizAnswer } from '@/services/teamsService';
 import { UserProfile } from '@/services/authService';
+import { VisualContentRenderer } from './visual/VisualContentRenderer';
 
 // ============================================
 // COMPONENTI HELPER
@@ -748,24 +749,31 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
 
           {activeTab === 'contenuto' && (
             <div className="space-y-6">
-              {/* Contenuto principale */}
-              <div className="prose prose-gray max-w-none">
-                {slide.contenuto.split('\n').map((paragraph, idx) => (
-                  <p key={idx} className="text-gray-700 leading-relaxed mb-4">
-                    {paragraph}
-                  </p>
-                ))}
-              </div>
+              {/* Contenuto visivo strutturato (se presente) */}
+              {slide.visualContent && Object.keys(slide.visualContent).length > 0 ? (
+                <VisualContentRenderer content={slide.visualContent} />
+              ) : (
+                <>
+                  {/* Contenuto principale markdown/testo */}
+                  <div className="prose prose-gray max-w-none">
+                    {slide.contenuto.split('\n').map((paragraph, idx) => (
+                      <p key={idx} className="text-gray-700 leading-relaxed mb-4">
+                        {paragraph}
+                      </p>
+                    ))}
+                  </div>
 
-              {/* Stats Grid */}
-              {slide.stats && slide.stats.length > 0 && (
-                <div className="mt-6">
-                  <StatsGrid stats={slide.stats} />
-                </div>
+                  {/* Stats Grid */}
+                  {slide.stats && slide.stats.length > 0 && (
+                    <div className="mt-6">
+                      <StatsGrid stats={slide.stats} />
+                    </div>
+                  )}
+                </>
               )}
 
-              {/* Quiz */}
-              {slide.quiz && (
+              {/* Quiz - sempre visibile se presente */}
+              {slide.quiz && !slide.visualContent?.quiz && (
                 <div className="mt-6">
                   <MiniQuiz
                     quiz={slide.quiz}

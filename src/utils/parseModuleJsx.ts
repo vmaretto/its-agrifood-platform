@@ -10,7 +10,7 @@
  * - Slides con contenuto, video, articoli, link, quiz
  */
 
-import { ModuleJSON, SlideJSON, VideoItem, ArticleItem, LinkItem, QuizItem } from '@/types/module';
+import { ModuleJSON, SlideJSON, VideoItem, ArticleItem, LinkItem, QuizItem, VisualContent } from '@/types/module';
 
 export interface ParseResult {
   success: boolean;
@@ -100,7 +100,154 @@ function extractModuleFromJsx(jsxContent: string): ModuleJSON | null {
     }
   }
 
+  // Prova a estrarre slidesData da componenti React complessi
+  const slidesDataExtracted = extractSlidesDataFromComponent(jsxContent);
+  if (slidesDataExtracted) {
+    return slidesDataExtracted;
+  }
+
   return null;
+}
+
+/**
+ * Estrae slidesData da un componente React (es. ModuloTrendTecnologici)
+ * Cerca pattern come: const slidesData = [ ... ];
+ */
+function extractSlidesDataFromComponent(jsxContent: string): ModuleJSON | null {
+  // Cerca il pattern "const slidesData = ["
+  const slidesDataMatch = jsxContent.match(/const\s+slidesData\s*=\s*\[/);
+  if (!slidesDataMatch) return null;
+
+  const startIndex = slidesDataMatch.index! + slidesDataMatch[0].length - 1;
+
+  // Trova la fine dell'array bilanciando le parentesi
+  let bracketCount = 1;
+  let endIndex = startIndex + 1;
+
+  while (bracketCount > 0 && endIndex < jsxContent.length) {
+    const char = jsxContent[endIndex];
+    if (char === '[') bracketCount++;
+    else if (char === ']') bracketCount--;
+    endIndex++;
+  }
+
+  if (bracketCount !== 0) return null;
+
+  const arrayContent = jsxContent.substring(startIndex, endIndex);
+
+  // Estrai anche il nome del modulo dall'export default function
+  const functionNameMatch = jsxContent.match(/export\s+default\s+function\s+(\w+)/);
+  const moduleName = functionNameMatch
+    ? functionNameMatch[1].replace(/^Modulo/, '').replace(/([A-Z])/g, ' $1').trim()
+    : 'Modulo Importato';
+
+  try {
+    // Pulisci il contenuto per renderlo JSON-compatibile
+    // Rimuovi trailing commas prima di ] o }
+    let cleanedContent = arrayContent
+      .replace(/,(\s*[}\]])/g, '$1');
+
+    // Sostituisci le chiavi senza virgolette con chiavi con virgolette
+    cleanedContent = cleanedContent.replace(/(\s*)(\w+)(\s*:\s*)/g, (match, before, key, after) => {
+      // Non sostituire se è già tra virgolette o se è parte di una URL
+      if (key.match(/^(http|https|true|false|null)$/)) return match;
+      return `${before}"${key}"${after}`;
+    });
+
+    // Prova a parsare come JSON
+    // eslint-disable-next-line no-new-func
+    const evalFn = new Function(`return ${arrayContent}`);
+    const slidesArray = evalFn();
+
+    if (!Array.isArray(slidesArray) || slidesArray.length === 0) return null;
+
+    // Converti slidesData nel formato ModuleJSON
+    const slides: SlideJSON[] = slidesArray.map((slide, index) => {
+      // Se slide.content esiste, salvalo come visualContent
+      // Altrimenti genera un fallback markdown
+      let visualContent: VisualContent | undefined;
+      let contenuto = '';
+
+      if (slide.content && typeof slide.content === 'object') {
+        // Salva content direttamente come visualContent per rendering visivo
+        visualContent = slide.content as VisualContent;
+        // Genera anche un fallback markdown per backward compatibility
+        contenuto = extractContentDescription(slide.content);
+      }
+
+      return {
+        id: slide.id ?? index + 1,
+        section: slide.section || 'Sezione',
+        title: slide.title || `Slide ${index + 1}`,
+        contenuto: contenuto,
+        visualContent: visualContent,
+        videos: slide.videos,
+        articles: slide.articles,
+        links: slide.links,
+        quiz: slide.quiz || (slide.hasQuiz ? slide.quiz : undefined),
+      };
+    });
+
+    return {
+      id: generateId(moduleName),
+      titolo: moduleName,
+      descrizione: `Modulo importato con ${slides.length} slide`,
+      durata: '',
+      icon: '📚',
+      createdAt: new Date().toISOString(),
+      slides,
+    };
+  } catch (e) {
+    console.error('Errore parsing slidesData:', e);
+    return null;
+  }
+}
+
+/**
+ * Estrae una descrizione testuale dal content object di una slide
+ */
+function extractContentDescription(content: Record<string, unknown>): string {
+  const parts: string[] = [];
+
+  // Estrai mainStats se presenti
+  if (content.mainStats && Array.isArray(content.mainStats)) {
+    const stats = content.mainStats as Array<{ label?: string; value?: number; suffix?: string }>;
+    parts.push('**Statistiche chiave:**');
+    stats.forEach(stat => {
+      if (stat.label) {
+        parts.push(`- ${stat.label}: ${stat.value || ''}${stat.suffix || ''}`);
+      }
+    });
+  }
+
+  // Estrai altre proprietà come liste
+  for (const [key, value] of Object.entries(content)) {
+    if (key === 'mainStats') continue;
+
+    if (Array.isArray(value)) {
+      const items = value as Array<{ title?: string; name?: string; description?: string }>;
+      if (items.length > 0 && (items[0].title || items[0].name)) {
+        parts.push(`\n**${formatKey(key)}:**`);
+        items.forEach(item => {
+          const title = item.title || item.name || '';
+          const desc = item.description || '';
+          parts.push(`- ${title}${desc ? ': ' + desc : ''}`);
+        });
+      }
+    }
+  }
+
+  return parts.join('\n');
+}
+
+/**
+ * Formatta una chiave camelCase in testo leggibile
+ */
+function formatKey(key: string): string {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, str => str.toUpperCase())
+    .trim();
 }
 
 /**
@@ -144,6 +291,7 @@ function normalizeModule(input: unknown): ModuleJSON {
     links: normalizeLinks(slide.links),
     quiz: slide.quiz,
     noteDocente: slide.noteDocente,
+    visualContent: slide.visualContent,
   }));
 
   return {
