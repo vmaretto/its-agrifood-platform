@@ -110,6 +110,37 @@ function extractModuleFromJsx(jsxContent: string): ModuleJSON | null {
 }
 
 /**
+ * Estrae una costante JavaScript (oggetto o array) dal contenuto
+ */
+function extractConstant(jsxContent: string, constName: string): string | null {
+  const regex = new RegExp(`const\\s+${constName}\\s*=\\s*`);
+  const match = jsxContent.match(regex);
+  if (!match) return null;
+
+  const startSearch = match.index! + match[0].length;
+  const firstChar = jsxContent[startSearch];
+
+  if (firstChar !== '{' && firstChar !== '[') return null;
+
+  const openBracket = firstChar;
+  const closeBracket = openBracket === '{' ? '}' : ']';
+
+  let bracketCount = 1;
+  let endIndex = startSearch + 1;
+
+  while (bracketCount > 0 && endIndex < jsxContent.length) {
+    const char = jsxContent[endIndex];
+    if (char === openBracket) bracketCount++;
+    else if (char === closeBracket) bracketCount--;
+    endIndex++;
+  }
+
+  if (bracketCount !== 0) return null;
+
+  return jsxContent.substring(startSearch, endIndex);
+}
+
+/**
  * Estrae slidesData da un componente React (es. ModuloTrendTecnologici)
  * Cerca pattern come: const slidesData = [ ... ];
  */
@@ -142,21 +173,28 @@ function extractSlidesDataFromComponent(jsxContent: string): ModuleJSON | null {
     : 'Modulo Importato';
 
   try {
-    // Pulisci il contenuto per renderlo JSON-compatibile
-    // Rimuovi trailing commas prima di ] o }
-    let cleanedContent = arrayContent
-      .replace(/,(\s*[}\]])/g, '$1');
+    // Estrai tutte le costanti MAIUSCOLE definite PRIMA di slidesData
+    // Queste potrebbero essere riferite nel slidesData (es. INSTITUTIONAL_SOURCES)
+    const contentBeforeSlidesData = jsxContent.substring(0, slidesDataMatch.index!);
+    const constantNames: string[] = [];
+    const constRegex = /const\s+([A-Z][A-Z_0-9]*)\s*=/g;
+    let constMatch;
+    while ((constMatch = constRegex.exec(contentBeforeSlidesData)) !== null) {
+      constantNames.push(constMatch[1]);
+    }
 
-    // Sostituisci le chiavi senza virgolette con chiavi con virgolette
-    cleanedContent = cleanedContent.replace(/(\s*)(\w+)(\s*:\s*)/g, (match, before, key, after) => {
-      // Non sostituire se è già tra virgolette o se è parte di una URL
-      if (key.match(/^(http|https|true|false|null)$/)) return match;
-      return `${before}"${key}"${after}`;
-    });
+    // Costruisci il codice delle costanti da includere nel contesto
+    let constantsCode = '';
+    for (const constName of constantNames) {
+      const constValue = extractConstant(jsxContent, constName);
+      if (constValue) {
+        constantsCode += `const ${constName} = ${constValue};\n`;
+      }
+    }
 
-    // Prova a parsare come JSON
+    // Prova a valutare con le costanti nel contesto
     // eslint-disable-next-line no-new-func
-    const evalFn = new Function(`return ${arrayContent}`);
+    const evalFn = new Function(`${constantsCode} return ${arrayContent}`);
     const slidesArray = evalFn();
 
     if (!Array.isArray(slidesArray) || slidesArray.length === 0) return null;
