@@ -135,19 +135,24 @@ const AdminDashboard = () => {
 };
 
 const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule }: { setActiveModule?: (id: string) => void; onRefresh?: number; onEditModule?: (moduleId: string) => void }) => {
-  const [dynamicModules, setDynamicModules] = React.useState<ModuleJSON[]>([]);
+  const [modules, setModules] = React.useState<ModuleJSON[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  // Carica i moduli da Supabase
+  // Carica i moduli da Supabase (inizializza quelli statici se non esistono)
   React.useEffect(() => {
     const loadModules = async () => {
       setIsLoading(true);
       try {
-        const modules = await getModules();
-        setDynamicModules(modules);
+        // Prima inizializza i moduli statici se non esistono
+        const { initializeStaticModules } = await import('@/services/supabaseModules');
+        await initializeStaticModules();
+
+        // Poi carica tutti i moduli
+        const allModules = await getModules();
+        setModules(allModules);
       } catch (err) {
         console.error('Error loading modules:', err);
-        setDynamicModules(getModulesSync());
+        setModules(getModulesSync());
       }
       setIsLoading(false);
     };
@@ -157,44 +162,31 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule }: { setActiv
   const handleDeleteModule = async (id: string) => {
     if (confirm('Sei sicuro di voler eliminare questo modulo?')) {
       await deleteModule(id);
-      const modules = await getModules();
-      setDynamicModules(modules);
+      const allModules = await getModules();
+      setModules(allModules);
     }
   };
 
-  // Moduli statici (built-in)
-  const staticModules = [
-    { id: 'agrifoodtech', nome: 'Tendenze AgrifoodTech', slides: 10, video: 14, articoli: 33, stato: 'pubblicato', isStatic: true },
-    { id: 'trend-tecnologici', nome: 'Trend Tecnologici 2026+', slides: 12, video: 12, articoli: 18, stato: 'pubblicato', isStatic: true },
-    { id: 'blockchain', nome: 'Blockchain per il Food', slides: 0, video: 0, articoli: 0, stato: 'bozza', isStatic: true },
-    { id: 'sostenibilita', nome: 'Sostenibilità nel Food', slides: 0, video: 0, articoli: 0, stato: 'bozza', isStatic: true },
-  ];
-
-  // IDs dei moduli statici per evitare duplicati
-  const staticModuleIds = staticModules.map(m => m.id);
-
-  // Converti moduli dinamici nel formato della tabella (escludi quelli con ID statico)
-  const dynamicModuleRows = dynamicModules
-    .filter(m => !staticModuleIds.includes(m.id)) // Evita duplicati con moduli statici
-    .map(m => ({
-      id: m.id,
-      nome: m.titolo,
-      slides: m.slides?.length || 0,
-      video: m.slides?.reduce((acc, s) => acc + (s.videos?.length || 0), 0) || 0,
-      articoli: m.slides?.reduce((acc, s) => acc + (s.articles?.length || 0), 0) || 0,
-      stato: 'pubblicato',
-      isStatic: false,
-      icon: m.icon,
-    }));
-
-  const allModules = [...staticModules, ...dynamicModuleRows];
+  // Converti moduli nel formato della tabella
+  const allModules = modules.map(m => ({
+    id: m.id,
+    nome: m.titolo,
+    slides: m.slides?.length || 0,
+    video: m.slides?.reduce((acc, s) => acc + (s.videos?.length || 0), 0) || 0,
+    articoli: m.slides?.reduce((acc, s) => acc + (s.articles?.length || 0), 0) || 0,
+    stato: 'pubblicato',
+    icon: m.icon,
+    hasNoteDocente: m.slides?.some(s => s.noteDocente) || false,
+  }));
 
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">📝 Gestione Contenuti</h1>
-          <p className="text-gray-500">{allModules.length} moduli totali • {dynamicModules.length} generati con AI</p>
+          <p className="text-gray-500">
+            {isLoading ? 'Caricamento...' : `${allModules.length} moduli totali`}
+          </p>
         </div>
       </div>
 
@@ -206,72 +198,78 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule }: { setActiv
               <th className="text-center p-4 font-semibold text-gray-600">Slide</th>
               <th className="text-center p-4 font-semibold text-gray-600">Video</th>
               <th className="text-center p-4 font-semibold text-gray-600">Articoli</th>
-              <th className="text-center p-4 font-semibold text-gray-600">Stato</th>
+              <th className="text-center p-4 font-semibold text-gray-600">Note</th>
               <th className="text-right p-4 font-semibold text-gray-600">Azioni</th>
             </tr>
           </thead>
           <tbody>
-            {allModules.map((modulo, idx) => (
-              <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50">
-                <td className="p-4">
-                  <div className="flex items-center gap-2">
-                    {'icon' in modulo && modulo.icon && <span>{modulo.icon}</span>}
-                    <div>
-                      <div className="font-medium text-gray-800">{modulo.nome}</div>
-                      <div className="text-xs text-gray-500">
-                        ID: {modulo.id}
-                        {!modulo.isStatic && <span className="ml-2 text-indigo-500">(AI Generated)</span>}
+            {isLoading ? (
+              <tr>
+                <td colSpan={6} className="p-8 text-center text-gray-500">
+                  Caricamento moduli...
+                </td>
+              </tr>
+            ) : allModules.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="p-8 text-center text-gray-500">
+                  Nessun modulo trovato
+                </td>
+              </tr>
+            ) : (
+              allModules.map((modulo, idx) => (
+                <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50">
+                  <td className="p-4">
+                    <div className="flex items-center gap-2">
+                      {modulo.icon && <span>{modulo.icon}</span>}
+                      <div>
+                        <div className="font-medium text-gray-800">{modulo.nome}</div>
+                        <div className="text-xs text-gray-500">ID: {modulo.id}</div>
                       </div>
                     </div>
-                  </div>
-                </td>
-                <td className="p-4 text-center">
-                  <span className="font-semibold text-gray-800">{modulo.slides}</span>
-                </td>
-                <td className="p-4 text-center">
-                  <span className="font-semibold text-gray-800">{modulo.video}</span>
-                </td>
-                <td className="p-4 text-center">
-                  <span className="font-semibold text-gray-800">{modulo.articoli}</span>
-                </td>
-                <td className="p-4 text-center">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                    modulo.stato === 'pubblicato'
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {modulo.stato}
-                  </span>
-                </td>
-                <td className="p-4 text-right">
-                  {setActiveModule && (
-                    <button
-                      onClick={() => setActiveModule(modulo.id)}
-                      className="px-3 py-1 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                    >
-                      Apri
-                    </button>
-                  )}
-                  {onEditModule && (
-                    <button
-                      onClick={() => onEditModule(modulo.id)}
-                      className="px-3 py-1 text-sm text-purple-600 hover:bg-purple-50 rounded-lg transition-colors ml-2"
-                    >
-                      Modifica
-                    </button>
-                  )}
-                  {/* Mostra Elimina solo per moduli dinamici (non statici) */}
-                  {!modulo.isStatic && (
+                  </td>
+                  <td className="p-4 text-center">
+                    <span className="font-semibold text-gray-800">{modulo.slides}</span>
+                  </td>
+                  <td className="p-4 text-center">
+                    <span className="font-semibold text-gray-800">{modulo.video}</span>
+                  </td>
+                  <td className="p-4 text-center">
+                    <span className="font-semibold text-gray-800">{modulo.articoli}</span>
+                  </td>
+                  <td className="p-4 text-center">
+                    {modulo.hasNoteDocente ? (
+                      <span className="text-emerald-500" title="Note docente presenti">✅</span>
+                    ) : (
+                      <span className="text-gray-300" title="Nessuna nota">-</span>
+                    )}
+                  </td>
+                  <td className="p-4 text-right">
+                    {setActiveModule && (
+                      <button
+                        onClick={() => setActiveModule(modulo.id)}
+                        className="px-3 py-1 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                      >
+                        Apri
+                      </button>
+                    )}
+                    {onEditModule && (
+                      <button
+                        onClick={() => onEditModule(modulo.id)}
+                        className="px-3 py-1 text-sm text-purple-600 hover:bg-purple-50 rounded-lg transition-colors ml-2"
+                      >
+                        Modifica
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDeleteModule(modulo.id)}
                       className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2"
                     >
                       Elimina
                     </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
