@@ -17,7 +17,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
   const [password, setPassword] = useState('');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [isTeacher, setIsTeacher] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,13 +45,13 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
           return;
         }
 
-        const role = isTeacher ? 'teacher' : 'student';
+        // Tutti i nuovi utenti sono studenti - solo admin può promuovere a docente
         const { user, error: signUpError } = await signUp(
           email,
           password,
           firstName.trim(),
           lastName.trim(),
-          role
+          'student'
         );
 
         if (signUpError) {
@@ -153,20 +152,6 @@ const AuthPage: React.FC<AuthPageProps> = ({ onAuthSuccess }) => {
               />
             </div>
 
-            {!isLogin && (
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="isTeacher"
-                  checked={isTeacher}
-                  onChange={(e) => setIsTeacher(e.target.checked)}
-                  className="w-4 h-4 text-emerald-600 border-gray-300 rounded focus:ring-emerald-500"
-                />
-                <label htmlFor="isTeacher" className="text-sm text-gray-600">
-                  Sono un docente
-                </label>
-              </div>
-            )}
 
             <button
               type="submit"

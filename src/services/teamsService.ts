@@ -243,6 +243,21 @@ export async function deleteStudent(id: string): Promise<boolean> {
   return true;
 }
 
+// Promuove/degrada un utente (solo per admin)
+export async function updateUserRole(id: string, role: 'student' | 'teacher' | 'admin'): Promise<boolean> {
+  const { error } = await supabase
+    .from('students')
+    .update({ role, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error updating user role:', error);
+    return false;
+  }
+
+  return true;
+}
+
 // ============================================
 // BONUS POINTS
 // ============================================
