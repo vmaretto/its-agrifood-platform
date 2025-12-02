@@ -932,67 +932,89 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
               <div className="text-white/90 text-sm">
                 Slide {slide.id}: {slide.title}
               </div>
-              <div className="mt-2 flex items-center gap-2">
-                <span className="bg-white/20 px-2 py-1 rounded text-xs">⏱️ {slide.noteDocente.durata}</span>
-              </div>
+              {slide.noteDocente.durata && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="bg-white/20 px-2 py-1 rounded text-xs">⏱️ {slide.noteDocente.durata}</span>
+                </div>
+              )}
             </div>
 
             {/* Content - Scrollable */}
             <div className="flex-1 overflow-y-auto p-4 space-y-6">
               {/* Obiettivi */}
-              <div className="bg-blue-50 rounded-xl p-4">
-                <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
-                  🎯 Obiettivi della slide
-                </h4>
-                <ul className="space-y-1">
-                  {slide.noteDocente.obiettivi.map((obj, idx) => (
-                    <li key={idx} className="text-sm text-blue-700 flex items-start gap-2">
-                      <span className="text-blue-500">•</span>
-                      {obj}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {slide.noteDocente.obiettivi && slide.noteDocente.obiettivi.length > 0 && (
+                <div className="bg-blue-50 rounded-xl p-4">
+                  <h4 className="font-bold text-blue-800 mb-2 flex items-center gap-2">
+                    🎯 Obiettivi della slide
+                  </h4>
+                  <ul className="space-y-1">
+                    {slide.noteDocente.obiettivi.map((obj, idx) => (
+                      <li key={idx} className="text-sm text-blue-700 flex items-start gap-2">
+                        <span className="text-blue-500">•</span>
+                        {obj}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Speech */}
-              <div className="bg-gray-50 rounded-xl p-4">
-                <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
-                  🎤 Speech consigliato
-                </h4>
-                <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
-                  {slide.noteDocente.speech}
+              {slide.noteDocente.speech && (
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h4 className="font-bold text-gray-800 mb-3 flex items-center gap-2">
+                    🎤 Speech consigliato
+                  </h4>
+                  <div className="text-sm text-gray-700 whitespace-pre-line leading-relaxed">
+                    {slide.noteDocente.speech}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* Note */}
-              <div className="bg-amber-50 rounded-xl p-4">
-                <h4 className="font-bold text-amber-800 mb-2 flex items-center gap-2">
-                  📝 Note per il docente
-                </h4>
-                <ul className="space-y-2">
-                  {slide.noteDocente.note.map((nota, idx) => (
-                    <li key={idx} className="text-sm text-amber-700 flex items-start gap-2">
-                      <span className="text-amber-500">⚠️</span>
-                      {nota}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {slide.noteDocente.note && slide.noteDocente.note.length > 0 && (
+                <div className="bg-amber-50 rounded-xl p-4">
+                  <h4 className="font-bold text-amber-800 mb-2 flex items-center gap-2">
+                    📝 Note per il docente
+                  </h4>
+                  <ul className="space-y-2">
+                    {slide.noteDocente.note.map((nota, idx) => (
+                      <li key={idx} className="text-sm text-amber-700 flex items-start gap-2">
+                        <span className="text-amber-500">⚠️</span>
+                        {nota}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
 
               {/* Domande suggerite */}
-              <div className="bg-purple-50 rounded-xl p-4">
-                <h4 className="font-bold text-purple-800 mb-2 flex items-center gap-2">
-                  ❓ Domande da porre alla classe
-                </h4>
-                <ul className="space-y-2">
-                  {slide.noteDocente.domande.map((domanda, idx) => (
-                    <li key={idx} className="text-sm text-purple-700 flex items-start gap-2">
-                      <span className="text-purple-500 font-bold">{idx + 1}.</span>
-                      {domanda}
-                    </li>
-                  ))}
-                </ul>
-              </div>
+              {slide.noteDocente.domande && slide.noteDocente.domande.length > 0 && (
+                <div className="bg-purple-50 rounded-xl p-4">
+                  <h4 className="font-bold text-purple-800 mb-2 flex items-center gap-2">
+                    ❓ Domande da porre alla classe
+                  </h4>
+                  <ul className="space-y-2">
+                    {slide.noteDocente.domande.map((domanda, idx) => (
+                      <li key={idx} className="text-sm text-purple-700 flex items-start gap-2">
+                        <span className="text-purple-500 font-bold">{idx + 1}.</span>
+                        {domanda}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Message if no content */}
+              {(!slide.noteDocente.obiettivi || slide.noteDocente.obiettivi.length === 0) &&
+               !slide.noteDocente.speech &&
+               (!slide.noteDocente.note || slide.noteDocente.note.length === 0) &&
+               (!slide.noteDocente.domande || slide.noteDocente.domande.length === 0) && (
+                <div className="text-center py-8 text-gray-500">
+                  <span className="text-4xl mb-2 block">📝</span>
+                  <p>Nessuna nota docente disponibile per questa slide.</p>
+                  <p className="text-sm mt-2">Genera il modulo con noteDocente per avere contenuti qui.</p>
+                </div>
+              )}
             </div>
 
             {/* Footer */}
