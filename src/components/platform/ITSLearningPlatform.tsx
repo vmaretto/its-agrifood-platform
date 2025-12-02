@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import HomeDashboard from './HomeDashboard';
 import PercorsoView from './PercorsoView';
@@ -9,8 +9,10 @@ import PlaceholderView from './PlaceholderView';
 import ModuloDinamico from '../moduli/ModuloDinamico';
 import AdminNuovoModulo from './AdminNuovoModulo';
 import AdminSquadre from './AdminSquadre';
+import AuthPage from '../auth/AuthPage';
 import { getModules, getModuleSync, deleteModule, getModulesSync } from '@/services/moduliStorage';
 import { ModuleJSON } from '@/types/module';
+import { getCurrentUser, signOut, UserProfile } from '@/services/authService';
 
 // ============================================
 // COMPONENTI ADMIN
@@ -483,11 +485,62 @@ const AdminSettings = () => {
 
 const ITSLearningPlatform: React.FC = () => {
   const [currentView, setCurrentView] = useState('home');
-  const [userRole, setUserRole] = useState<'student' | 'admin'>('student');
   const [activeModule, setActiveModule] = useState<string | null>(null);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
 
+  // Auth state
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  // Deriva il ruolo dall'utente autenticato
+  const userRole = currentUser?.role === 'teacher' || currentUser?.role === 'admin' ? 'admin' : 'student';
   const isAdmin = userRole === 'admin';
+
+  // Carica l'utente corrente all'avvio
+  useEffect(() => {
+    const loadUser = async () => {
+      setIsAuthLoading(true);
+      try {
+        const user = await getCurrentUser();
+        setCurrentUser(user);
+      } catch (err) {
+        console.error('Error loading user:', err);
+      }
+      setIsAuthLoading(false);
+    };
+    loadUser();
+  }, []);
+
+  // Handler per login riuscito
+  const handleAuthSuccess = (user: UserProfile) => {
+    setCurrentUser(user);
+    setCurrentView('home');
+  };
+
+  // Handler per logout
+  const handleLogout = async () => {
+    await signOut();
+    setCurrentUser(null);
+    setCurrentView('home');
+  };
+
+  // Mostra loading durante il check auth iniziale
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+        <div className="text-white text-center">
+          <div className="text-4xl mb-4">ITS</div>
+          <div className="text-xl">AgriFood Academy</div>
+          <div className="mt-4 animate-pulse">Caricamento...</div>
+        </div>
+      </div>
+    );
+  }
+
+  // Se non autenticato, mostra pagina login
+  if (!currentUser) {
+    return <AuthPage onAuthSuccess={handleAuthSuccess} />;
+  }
 
   // Handler per editare un modulo
   const handleEditModule = (moduleId: string) => {
@@ -523,6 +576,7 @@ const ITSLearningPlatform: React.FC = () => {
           <HomeDashboard
             setCurrentView={setCurrentView}
             setActiveModule={setActiveModule}
+            currentUser={currentUser}
           />
         );
       case 'percorso':
@@ -576,9 +630,10 @@ const ITSLearningPlatform: React.FC = () => {
         currentView={currentView}
         setCurrentView={setCurrentView}
         userRole={userRole}
-        setUserRole={setUserRole}
         activeModule={activeModule}
         setActiveModule={setActiveModule}
+        currentUser={currentUser}
+        onLogout={handleLogout}
       />
       <div className="flex-1 overflow-auto">{renderView()}</div>
     </div>

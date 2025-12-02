@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { UserProfile } from '@/services/authService';
 
 interface MenuItem {
   id: string;
@@ -12,18 +13,20 @@ interface SidebarProps {
   currentView: string;
   setCurrentView: (view: string) => void;
   userRole: 'student' | 'admin';
-  setUserRole: (role: 'student' | 'admin') => void;
   activeModule: string | null;
   setActiveModule: (module: string | null) => void;
+  currentUser: UserProfile | null;
+  onLogout: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
   currentView,
   setCurrentView,
   userRole,
-  setUserRole,
   activeModule,
   setActiveModule,
+  currentUser,
+  onLogout,
 }) => {
   const studentMenu: MenuItem[] = [
     { id: 'home', icon: '🏠', label: 'Home' },
@@ -44,6 +47,21 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const menu = userRole === 'student' ? studentMenu : adminMenu;
+
+  // Nome utente da mostrare
+  const userName = currentUser
+    ? `${currentUser.first_name} ${currentUser.last_name}`
+    : 'Utente';
+
+  // Ruolo da mostrare
+  const roleLabel = currentUser?.role === 'teacher' || currentUser?.role === 'admin'
+    ? 'Docente'
+    : 'Studente';
+
+  // Iniziali per avatar
+  const initials = currentUser
+    ? `${currentUser.first_name[0]}${currentUser.last_name[0]}`
+    : '??';
 
   return (
     <div className="w-64 bg-white border-r h-screen flex flex-col">
@@ -99,19 +117,19 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* User Profile */}
       <div className="p-4 border-t">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-8 h-8 bg-gray-300 rounded-full"></div>
-          <div>
-            <div className="text-sm font-medium">Marco Rossi</div>
-            <div className="text-xs text-gray-500">
-              {userRole === 'student' ? 'Studente' : 'Docente'}
-            </div>
+          <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center text-white text-sm font-medium">
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium truncate">{userName}</div>
+            <div className="text-xs text-gray-500">{roleLabel}</div>
           </div>
         </div>
         <button
-          onClick={() => setUserRole(userRole === 'student' ? 'admin' : 'student')}
-          className="w-full text-xs text-gray-500 hover:text-gray-700 py-1 border rounded"
+          onClick={onLogout}
+          className="w-full text-xs text-red-500 hover:text-red-700 py-2 border border-red-200 rounded hover:bg-red-50 transition-colors"
         >
-          Passa a vista {userRole === 'student' ? 'Admin' : 'Studente'}
+          Esci
         </button>
       </div>
     </div>

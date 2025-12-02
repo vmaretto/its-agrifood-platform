@@ -1,91 +1,114 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { getTeams, Team } from '@/services/teamsService';
+import { getTeams, Team, getTeam } from '@/services/teamsService';
+import { UserProfile } from '@/services/authService';
 
 interface HomeDashboardProps {
   setCurrentView: (view: string) => void;
   setActiveModule: (module: string | null) => void;
+  currentUser: UserProfile | null;
 }
 
 const HomeDashboard: React.FC<HomeDashboardProps> = ({
   setCurrentView,
   setActiveModule,
+  currentUser,
 }) => {
   const [classificaSquadre, setClassificaSquadre] = useState<Team[]>([]);
+  const [userTeam, setUserTeam] = useState<Team | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Carica le squadre da Supabase
   useEffect(() => {
-    const loadTeams = async () => {
+    const loadData = async () => {
       setIsLoading(true);
       try {
         const teams = await getTeams();
         setClassificaSquadre(teams);
+
+        // Carica la squadra dell'utente corrente se ha un team_id
+        if (currentUser?.team_id) {
+          const team = await getTeam(currentUser.team_id);
+          setUserTeam(team);
+        }
       } catch (err) {
         console.error('Error loading teams:', err);
       }
       setIsLoading(false);
     };
-    loadTeams();
-  }, []);
+    loadData();
+  }, [currentUser?.team_id]);
 
-  // TODO: In futuro, caricare la squadra dello studente loggato
-  const squadra = classificaSquadre[0] || { name: 'Nessuna squadra', points: 0, color: 'bg-emerald-500' };
+  // Nome dell'utente
+  const userName = currentUser ? currentUser.first_name : 'Studente';
+
+  // Punti dell'utente
+  const userPoints = currentUser?.points || 0;
+
+  // Squadra dell'utente (o placeholder se non assegnato)
+  const squadra = userTeam || { name: 'Nessuna squadra', points: 0, color: 'bg-gray-400', id: '' };
+
+  // Trova la posizione della squadra dell'utente nella classifica
+  const teamPosition = userTeam
+    ? classificaSquadre.findIndex(t => t.id === userTeam.id) + 1
+    : 0;
+
+  // Progresso corso (placeholder - in futuro calcolato dai moduli completati)
   const progressoCorso = 25;
 
   const badges = [
-    { nome: 'Primo Passo', icon: '🎯', ottenuto: true },
-    { nome: 'Quiz Master', icon: '🧠', ottenuto: true },
-    { nome: 'Team Player', icon: '🤝', ottenuto: false },
+    { nome: 'Primo Passo', icon: '🎯', ottenuto: userPoints > 0 },
+    { nome: 'Quiz Master', icon: '🧠', ottenuto: userPoints >= 50 },
+    { nome: 'Team Player', icon: '🤝', ottenuto: !!userTeam },
     { nome: 'Blockchain Expert', icon: '⛓️', ottenuto: false },
     { nome: 'Innovatore', icon: '💡', ottenuto: false },
-    { nome: 'Campione', icon: '🏆', ottenuto: false },
+    { nome: 'Campione', icon: '🏆', ottenuto: userPoints >= 100 },
   ];
 
   return (
     <div className="p-8">
       {/* Welcome Header */}
       <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">Benvenuto, Marco!</h1>
+        <h1 className="text-2xl font-bold text-gray-800">Benvenuto, {userName}!</h1>
         <p className="text-gray-500">Continua il tuo percorso di apprendimento</p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-3 gap-6 mb-8">
-        {/* Progresso Corso */}
+        {/* Punti Personali */}
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <span className="text-gray-500">Progresso Corso</span>
-            <span className="text-2xl font-bold text-emerald-600">{progressoCorso}%</span>
+            <span className="text-gray-500">I tuoi punti</span>
+            <span className="text-2xl font-bold text-emerald-600">{userPoints}</span>
           </div>
           <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
             <div
               className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-              style={{ width: `${progressoCorso}%` }}
+              style={{ width: `${Math.min((userPoints / 100) * 100, 100)}%` }}
             ></div>
           </div>
-          <button
-            onClick={() => setCurrentView('percorso')}
-            className="mt-4 text-sm text-emerald-600 hover:text-emerald-700 font-medium"
-          >
-            Continua
-          </button>
+          <p className="mt-2 text-xs text-gray-500">
+            {userPoints < 50 ? 'Continua a fare quiz per guadagnare punti!' : 'Ottimo lavoro!'}
+          </p>
         </div>
 
         {/* Squadra */}
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white">
+        <div className={`bg-gradient-to-br ${userTeam ? 'from-emerald-500 to-teal-600' : 'from-gray-400 to-gray-500'} rounded-2xl p-6 text-white`}>
           <div className="text-sm opacity-80 mb-1">La tua squadra</div>
           <div className="text-xl font-bold mb-2">{squadra.name}</div>
           <div className="flex items-center gap-4">
             <div>
               <div className="text-3xl font-bold">{squadra.points || 0}</div>
-              <div className="text-xs opacity-80">punti</div>
+              <div className="text-xs opacity-80">punti squadra</div>
             </div>
             <div className="text-4xl">
-              {classificaSquadre.length > 0 && classificaSquadre[0].id === squadra.id ? '🥇' : '🏅'}
+              {teamPosition === 1 ? '🥇' : teamPosition === 2 ? '🥈' : teamPosition === 3 ? '🥉' : '🏅'}
             </div>
           </div>
+          {!userTeam && (
+            <p className="mt-2 text-xs opacity-80">Il docente ti assegnera a una squadra</p>
+          )}
         </div>
 
         {/* Prossima Sfida */}
@@ -114,14 +137,20 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({
           ) : (
             <div className="space-y-3">
               {classificaSquadre.map((team, idx) => (
-                <div key={team.id} className="flex items-center gap-3">
+                <div
+                  key={team.id}
+                  className={`flex items-center gap-3 ${userTeam?.id === team.id ? 'bg-emerald-50 -mx-2 px-2 py-1 rounded-lg' : ''}`}
+                >
                   <div
                     className={`w-8 h-8 ${team.color} rounded-full flex items-center justify-center text-white text-sm font-bold`}
                   >
                     {idx + 1}
                   </div>
                   <div className="flex-1">
-                    <div className="font-medium text-gray-800">{team.name}</div>
+                    <div className="font-medium text-gray-800">
+                      {team.name}
+                      {userTeam?.id === team.id && <span className="ml-2 text-xs text-emerald-600">(tu)</span>}
+                    </div>
                   </div>
                   <div className="font-semibold text-gray-600">{team.points || 0} pt</div>
                 </div>
