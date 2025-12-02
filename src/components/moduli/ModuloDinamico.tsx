@@ -4,6 +4,8 @@
 import React, { useState, useEffect } from 'react';
 import { ModuleJSON, SlideJSON, StatItem, VideoItem, ArticleItem, LinkItem, QuizItem, NoteDocenteItem } from '@/types/module';
 import { saveModule } from '@/services/moduliStorage';
+import { saveQuizAnswer } from '@/services/teamsService';
+import { UserProfile } from '@/services/authService';
 
 // ============================================
 // COMPONENTI HELPER
@@ -121,22 +123,56 @@ const LinkCard = ({ link }: { link: LinkItem }) => (
   </a>
 );
 
-const MiniQuiz = ({ quiz }: { quiz: QuizItem }) => {
+interface MiniQuizProps {
+  quiz: QuizItem;
+  currentUser?: UserProfile | null;
+  moduleId: string;
+  slideId: number;
+  onAnswerSaved?: (isCorrect: boolean, points: number) => void;
+}
+
+const MiniQuiz = ({ quiz, currentUser, moduleId, slideId, onAnswerSaved }: MiniQuizProps) => {
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [alreadyAnswered, setAlreadyAnswered] = useState(false);
+  const [pointsEarned, setPointsEarned] = useState<number | null>(null);
 
-  const handleAnswer = (index: number) => {
+  const handleAnswer = async (index: number) => {
     setSelectedAnswer(index);
     setShowResult(true);
+
+    const isCorrect = index === quiz.correctIndex;
+    const points = isCorrect ? 10 : 0;
+
+    // Salva la risposta su Supabase se l'utente è loggato
+    if (currentUser?.id && !alreadyAnswered) {
+      try {
+        await saveQuizAnswer(currentUser.id, moduleId, slideId, isCorrect, points);
+        setAlreadyAnswered(true);
+        if (isCorrect) {
+          setPointsEarned(points);
+        }
+        onAnswerSaved?.(isCorrect, points);
+      } catch (err) {
+        console.error('Errore nel salvataggio risposta quiz:', err);
+      }
+    }
   };
 
   const isCorrect = selectedAnswer === quiz.correctIndex;
 
   return (
     <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6">
-      <div className="flex items-center gap-2 mb-4">
-        <span className="text-2xl">🧠</span>
-        <h4 className="font-bold text-gray-800">Quiz di verifica</h4>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">🧠</span>
+          <h4 className="font-bold text-gray-800">Quiz di verifica</h4>
+        </div>
+        {!showResult && currentUser && (
+          <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
+            +10 punti se corretto
+          </span>
+        )}
       </div>
       <p className="text-gray-700 mb-4">{quiz.question}</p>
       <div className="space-y-2">
@@ -164,7 +200,12 @@ const MiniQuiz = ({ quiz }: { quiz: QuizItem }) => {
         <div className={`mt-4 p-4 rounded-lg ${isCorrect ? 'bg-green-100' : 'bg-amber-100'}`}>
           <div className="flex items-center gap-2 mb-2">
             <span className="text-xl">{isCorrect ? '✅' : '💡'}</span>
-            <span className="font-semibold">{isCorrect ? 'Corretto!' : 'Non esattamente...'}</span>
+            <span className="font-semibold">
+              {isCorrect ? 'Corretto!' : 'Non esattamente...'}
+              {isCorrect && pointsEarned && currentUser && (
+                <span className="ml-2 text-emerald-600">+{pointsEarned} punti!</span>
+              )}
+            </span>
           </div>
           <p className="text-sm text-gray-700">{quiz.explanation}</p>
         </div>
@@ -434,9 +475,10 @@ interface ModuloDinamicoProps {
   isAdmin?: boolean;
   userRole?: 'student' | 'admin';
   setUserRole?: (role: 'student' | 'admin') => void;
+  currentUser?: UserProfile | null;
 }
 
-export default function ModuloDinamico({ module: initialModule, onBack, isAdmin = false, userRole = 'student', setUserRole }: ModuloDinamicoProps) {
+export default function ModuloDinamico({ module: initialModule, onBack, isAdmin = false, userRole = 'student', setUserRole, currentUser }: ModuloDinamicoProps) {
   const [module, setModule] = useState<ModuleJSON>(initialModule);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [activeTab, setActiveTab] = useState('contenuto');
@@ -725,7 +767,12 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
               {/* Quiz */}
               {slide.quiz && (
                 <div className="mt-6">
-                  <MiniQuiz quiz={slide.quiz} />
+                  <MiniQuiz
+                    quiz={slide.quiz}
+                    currentUser={currentUser}
+                    moduleId={module.id}
+                    slideId={slide.id}
+                  />
                 </div>
               )}
             </div>

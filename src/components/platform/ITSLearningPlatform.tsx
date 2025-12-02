@@ -554,7 +554,15 @@ const ITSLearningPlatform: React.FC = () => {
 
     const dynamicModule = getModuleSync(activeModule);
     if (dynamicModule) {
-      return <ModuloDinamico module={dynamicModule} onBack={() => setActiveModule(null)} isAdmin={isAdmin} userRole={userRole} setUserRole={setUserRole} />;
+      return (
+        <ModuloDinamico
+          module={dynamicModule}
+          onBack={() => setActiveModule(null)}
+          isAdmin={isAdmin}
+          userRole={userRole}
+          currentUser={currentUser}
+        />
+      );
     }
     return null;
   };
