@@ -162,36 +162,32 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule }: { setActiv
     }
   };
 
-  // IDs dei moduli statici (built-in)
-  const staticModuleIds = ['agrifoodtech', 'trend-tecnologici', 'blockchain', 'sostenibilita'];
-
-  // Moduli statici (built-in) - mostra solo quelli senza dati su Supabase
-  const staticModulesBase = [
+  // Moduli statici (built-in)
+  const staticModules = [
     { id: 'agrifoodtech', nome: 'Tendenze AgrifoodTech', slides: 10, video: 14, articoli: 33, stato: 'pubblicato', isStatic: true },
     { id: 'trend-tecnologici', nome: 'Trend Tecnologici 2026+', slides: 12, video: 12, articoli: 18, stato: 'pubblicato', isStatic: true },
     { id: 'blockchain', nome: 'Blockchain per il Food', slides: 0, video: 0, articoli: 0, stato: 'bozza', isStatic: true },
     { id: 'sostenibilita', nome: 'Sostenibilità nel Food', slides: 0, video: 0, articoli: 0, stato: 'bozza', isStatic: true },
   ];
 
-  // Converti moduli dinamici nel formato della tabella
-  const dynamicModuleRows = dynamicModules.map(m => ({
-    id: m.id,
-    nome: m.titolo,
-    slides: m.slides?.length || 0,
-    video: m.slides?.reduce((acc, s) => acc + (s.videos?.length || 0), 0) || 0,
-    articoli: m.slides?.reduce((acc, s) => acc + (s.articles?.length || 0), 0) || 0,
-    stato: 'pubblicato',
-    isStatic: staticModuleIds.includes(m.id), // Marca come statico se ha ID statico
-    icon: m.icon,
-    hasNoteDocente: m.slides?.some(s => s.noteDocente) || false,
-  }));
+  // IDs dei moduli statici per evitare duplicati
+  const staticModuleIds = staticModules.map(m => m.id);
 
-  // Filtra i moduli statici che hanno già dati su Supabase (per evitare duplicati)
-  const staticModulesFiltered = staticModulesBase.filter(
-    sm => !dynamicModules.some(dm => dm.id === sm.id)
-  );
+  // Converti moduli dinamici nel formato della tabella (escludi quelli con ID statico)
+  const dynamicModuleRows = dynamicModules
+    .filter(m => !staticModuleIds.includes(m.id)) // Evita duplicati con moduli statici
+    .map(m => ({
+      id: m.id,
+      nome: m.titolo,
+      slides: m.slides?.length || 0,
+      video: m.slides?.reduce((acc, s) => acc + (s.videos?.length || 0), 0) || 0,
+      articoli: m.slides?.reduce((acc, s) => acc + (s.articles?.length || 0), 0) || 0,
+      stato: 'pubblicato',
+      isStatic: false,
+      icon: m.icon,
+    }));
 
-  const allModules = [...staticModulesFiltered, ...dynamicModuleRows];
+  const allModules = [...staticModules, ...dynamicModuleRows];
 
   return (
     <div className="p-8">
@@ -264,8 +260,8 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule }: { setActiv
                       Modifica
                     </button>
                   )}
-                  {/* Mostra Elimina solo per moduli dinamici o statici con noteDocente su Supabase */}
-                  {(!modulo.isStatic || dynamicModules.some(dm => dm.id === modulo.id)) && (
+                  {/* Mostra Elimina solo per moduli dinamici (non statici) */}
+                  {!modulo.isStatic && (
                     <button
                       onClick={() => handleDeleteModule(modulo.id)}
                       className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2"
