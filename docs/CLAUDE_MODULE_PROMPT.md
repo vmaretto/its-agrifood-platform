@@ -34,11 +34,10 @@ Ogni slide deve avere:
   "visualContent": {
     // Componenti visivi (vedi catalogo sotto)
   },
-  "videos": [],       // Opzionale
-  "articles": [],     // Opzionale
-  "links": [],        // Opzionale
-  "quiz": null,       // Opzionale
-  "noteDocente": null // Opzionale - note per il docente
+  "videos": [],    // Opzionale
+  "articles": [],  // Opzionale
+  "links": [],     // Opzionale
+  "quiz": null     // Opzionale
 }
 
 ## CATALOGO COMPONENTI VISIVI
@@ -277,48 +276,6 @@ type: "Report", "Articolo", "Guida", "Case Study", "Studio", "PDF"
 }
 ```
 
-## NOTE DOCENTE (noteDocente)
-
-Le note docente sono contenuti riservati al docente per guidare la lezione. Includono obiettivi, speech suggerito, note pratiche e domande da porre.
-
-### Formato noteDocente
-```json
-{
-  "noteDocente": {
-    "durata": "8-10 minuti",
-    "obiettivi": [
-      "Far comprendere l'importanza della digitalizzazione",
-      "Illustrare i principali trend tecnologici",
-      "Stimolare la riflessione critica"
-    ],
-    "speech": "Buongiorno a tutti! Oggi parliamo di un tema fondamentale per il futuro del settore agroalimentare: la trasformazione digitale. Come potete vedere dai dati, il settore sta vivendo una rivoluzione che cambierà radicalmente il modo di produrre, trasformare e distribuire il cibo...",
-    "note": [
-      "Verificare che tutti abbiano compreso i concetti base della digitalizzazione",
-      "Se necessario, fare esempi concreti di aziende locali",
-      "Preparare casi studio da discutere in gruppo"
-    ],
-    "domande": [
-      "Quali tecnologie digitali conoscete già nel settore alimentare?",
-      "Come pensate che la digitalizzazione possa migliorare la tracciabilità?",
-      "Quali sfide vedete nell'adozione di queste tecnologie?"
-    ]
-  }
-}
-```
-
-### Campi noteDocente
-- **durata**: tempo stimato per la slide (es. "5 minuti", "8-10 minuti")
-- **obiettivi**: array di obiettivi didattici specifici per la slide
-- **speech**: testo completo dello speech suggerito per il docente
-- **note**: array di note pratiche e suggerimenti per il docente
-- **domande**: array di domande da porre alla classe per stimolare la discussione
-
-### Quando includere noteDocente
-- Includi noteDocente per OGNI slide del modulo
-- Lo speech deve essere naturale e colloquiale
-- Gli obiettivi devono essere misurabili e specifici
-- Le domande devono stimolare la discussione e il pensiero critico
-
 ## LINEE GUIDA PER LA VARIETÀ
 
 1. **Alterna i componenti** - Non usare sempre gli stessi componenti. Varia tra stats, timeline, technologies, etc.
@@ -388,26 +345,7 @@ Le note docente sono contenuti riservati al docente per guidare la lezione. Incl
       "url": "https://www.ismea.it",
       "icon": "📊"
     }
-  ],
-  "noteDocente": {
-    "durata": "10 minuti",
-    "obiettivi": [
-      "Introdurre il concetto di AgriFood 4.0",
-      "Presentare le dimensioni economiche del settore",
-      "Identificare i principali temi della trasformazione digitale"
-    ],
-    "speech": "Buongiorno a tutti! Oggi iniziamo un percorso affascinante nel mondo dell'AgriFood 4.0. Il settore agroalimentare italiano vale quasi 600 miliardi di euro e impiega quasi 4 milioni di persone. Ma la vera notizia è che sta vivendo una trasformazione digitale senza precedenti. Guardate questi numeri: il 41% delle aziende ha già intrapreso un percorso di digitalizzazione, con una crescita del 9.7% anno su anno. Oggi esploreremo tre grandi temi: la supply chain digitale, la sostenibilità e l'automazione.",
-    "note": [
-      "Iniziare chiedendo agli studenti cosa sanno già della digitalizzazione in agricoltura",
-      "Sottolineare l'importanza economica del settore per il PIL italiano",
-      "Preparare esempi di aziende locali che hanno intrapreso percorsi di innovazione"
-    ],
-    "domande": [
-      "Qualcuno di voi ha esperienza diretta con aziende agricole? Avete notato cambiamenti tecnologici negli ultimi anni?",
-      "Cosa vi viene in mente quando pensate all'agricoltura del futuro?",
-      "Secondo voi, quali sono i principali ostacoli alla digitalizzazione nel settore?"
-    ]
-  }
+  ]
 }
 ```
 
@@ -418,8 +356,9 @@ Quando l'utente ti chiede di creare un modulo:
 2. Usa componenti diversi per ogni slide
 3. Includi sempre risorse (video, articoli, link)
 4. Aggiungi quiz interattivi ogni 3-4 slide
-5. **Includi noteDocente per OGNI slide** con speech, obiettivi, note e domande
-6. Il JSON deve essere valido e copiabile direttamente
+5. Il JSON deve essere valido e copiabile direttamente
+
+**NOTA**: Le note docente (speech, obiettivi, domande) vengono caricate separatamente tramite file Markdown sulla piattaforma. NON includerle nel JSON del modulo.
 
 RISPONDI SEMPRE CON UN BLOCCO JSON VALIDO che l'utente può copiare e incollare nella piattaforma.
 ```
