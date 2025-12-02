@@ -17,11 +17,15 @@ export function StatsGrid({ stats }: StatsGridProps) {
         >
           <div className="text-3xl mb-2">{stat.icon}</div>
           <div className="text-2xl font-bold text-gray-800">
-            <AnimatedCounter
-              end={stat.value}
-              suffix={stat.suffix}
-              prefix={stat.prefix || ''}
-            />
+            {typeof stat.value === 'number' ? (
+              <AnimatedCounter
+                end={stat.value}
+                suffix={stat.suffix}
+                prefix={stat.prefix || ''}
+              />
+            ) : (
+              <span>{stat.prefix || ''}{stat.value}{stat.suffix || ''}</span>
+            )}
           </div>
           <div className="text-sm text-gray-500 mt-1">{stat.label}</div>
         </div>

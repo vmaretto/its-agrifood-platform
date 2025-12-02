@@ -1,8 +1,8 @@
 // Tipi per i moduli dinamici generati da Markdown
 
 export interface StatItem {
-  icon: string;
-  value: number;
+  icon?: string;
+  value: number | string;  // Può essere numero o stringa (es. '€586,9')
   suffix?: string;
   prefix?: string;
   label: string;
@@ -125,12 +125,14 @@ export interface ListItemContent {
   icon?: string;
   text?: string;
   title?: string;
+  label?: string;  // Alternativa a title (usato nel JSX di Claude)
   highlight?: boolean;
   description?: string;
 }
 
 export interface ThemeItem {
   title?: string;
+  label?: string;  // Alternativa a title (usato nel JSX di Claude)
   description?: string;
   color?: string;
   icon?: string;

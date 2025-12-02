@@ -23,7 +23,10 @@ export function HeroSection({ emoji, title, description, banner }: HeroSectionPr
           <div className="text-6xl mb-4">{banner.emoji}</div>
         )}
         {banner.title && (
-          <h2 className="text-2xl font-bold text-white mb-3">{banner.title}</h2>
+          <h2
+            className="text-2xl font-bold text-white mb-3"
+            dangerouslySetInnerHTML={{ __html: banner.title }}
+          />
         )}
         {banner.description && (
           <p className="text-white/90 text-lg">{banner.description}</p>
@@ -39,7 +42,10 @@ export function HeroSection({ emoji, title, description, banner }: HeroSectionPr
         <div className="text-6xl mb-4">{emoji}</div>
       )}
       {title && (
-        <h2 className="text-2xl font-bold text-white mb-3">{title}</h2>
+        <h2
+          className="text-2xl font-bold text-white mb-3"
+          dangerouslySetInnerHTML={{ __html: title }}
+        />
       )}
       {description && (
         <p className="text-white/90 text-lg">{description}</p>

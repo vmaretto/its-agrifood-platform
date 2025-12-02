@@ -33,8 +33,8 @@ export function ThemesList({ themes }: ThemesListProps) {
                 <span className="text-2xl">{theme.icon}</span>
               )}
               <div className="flex-1">
-                {theme.title && (
-                  <h4 className="font-semibold mb-1">{theme.title}</h4>
+                {(theme.title || theme.label) && (
+                  <h4 className="font-semibold mb-1">{theme.title || theme.label}</h4>
                 )}
                 {theme.description && (
                   <p className="text-sm opacity-80">{theme.description}</p>

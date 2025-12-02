@@ -55,17 +55,17 @@ export function ItemsList({ items, title, titleIcon, variant = 'default' }: Item
               {item.icon || '•'}
             </span>
             <div className="flex-1">
-              {item.title && (
+              {(item.title || item.label) && (
                 <span
                   className={`font-medium ${
                     item.highlight ? `${styles.highlight} px-2 py-0.5 rounded` : 'text-gray-800'
                   }`}
                 >
-                  {item.title}
+                  {item.title || item.label}
                 </span>
               )}
               {item.text && (
-                <span className={`text-gray-700 ${item.title ? ' ml-1' : ''}`}>
+                <span className={`text-gray-700 ${(item.title || item.label) ? ' ml-1' : ''}`}>
                   {item.text}
                 </span>
               )}
