@@ -30,6 +30,15 @@ const formatTimeSpent = (seconds: number): string => {
   return `${hours}h ${remainingMinutes}min`;
 };
 
+// Funzione helper per calcolare i punti in base al tempo trascorso
+const calculatePointsFromTime = (seconds: number): number => {
+  const minutes = seconds / 60;
+  if (minutes < 1) return 1;      // < 1 minuto = 1 punto
+  if (minutes < 5) return 5;      // 1-5 minuti = 5 punti
+  if (minutes < 10) return 10;    // 5-10 minuti = 10 punti
+  return 20;                       // > 10 minuti = 20 punti
+};
+
 const AnimatedCounter = ({ value, suffix = '', duration = 2000 }: { value: number; suffix?: string; duration?: number }) => {
   const [count, setCount] = useState(0);
 
@@ -518,6 +527,7 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
   // Time tracking
   const [moduleStartTime] = useState<number>(Date.now());
   const [timeSpentSeconds, setTimeSpentSeconds] = useState<number>(0);
+  const [earnedPoints, setEarnedPoints] = useState<number>(0);
 
   // Stati per modal video
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -1072,13 +1082,17 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
                       onConflict: 'user_id,module_id'
                     });
 
+                    // Calcola punti in base al tempo
+                    const pointsEarned = calculatePointsFromTime(elapsedSeconds);
+                    setEarnedPoints(pointsEarned);
+
                     // Log completamento
-                    await logModuleCompleted(currentUser.id, module.id, module.titolo, 50);
+                    await logModuleCompleted(currentUser.id, module.id, module.titolo, pointsEarned);
 
                     // Aggiungi bonus points
                     await supabase.from('bonus_points').insert([{
                       student_id: currentUser.id,
-                      points: 50,
+                      points: pointsEarned,
                       reason: `Modulo completato: ${module.titolo}`,
                       assigned_by: 'system'
                     }]);
@@ -1287,7 +1301,7 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
                 <div className="bg-emerald-50 rounded-xl p-4 mb-6">
                   <div className="flex items-center justify-center gap-4">
                     <div className="text-center">
-                      <div className="text-2xl font-bold text-emerald-600">+50</div>
+                      <div className="text-2xl font-bold text-emerald-600">+{earnedPoints}</div>
                       <div className="text-sm text-emerald-700">punti bonus</div>
                     </div>
                     <div className="w-px h-12 bg-emerald-200"></div>
