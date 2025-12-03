@@ -116,12 +116,20 @@ export async function markSlideCompleted(
   totalSlides: number,
   moduleName: string
 ): Promise<boolean> {
+  console.log('[markSlideCompleted] Called with:', { userId, moduleId, slideNumber, totalSlides, moduleName });
+
   // Get current progress
   const progress = await getModuleProgress(userId, moduleId);
-  if (!progress) return false;
+  console.log('[markSlideCompleted] Current progress:', progress);
+
+  if (!progress) {
+    console.log('[markSlideCompleted] No progress found, returning false');
+    return false;
+  }
 
   // Se il modulo era già completato, non ritornare true per il modal
   const wasAlreadyCompleted = progress.is_completed;
+  console.log('[markSlideCompleted] wasAlreadyCompleted:', wasAlreadyCompleted);
 
   const completedSlides = progress.completed_slides || [];
   if (!completedSlides.includes(slideNumber)) {
@@ -130,6 +138,12 @@ export async function markSlideCompleted(
 
   // Check if module is completed
   const isCompleted = completedSlides.length >= totalSlides;
+  console.log('[markSlideCompleted] Slide tracking:', {
+    completedSlidesCount: completedSlides.length,
+    totalSlides,
+    isCompleted,
+    willReturnTrue: isCompleted && !wasAlreadyCompleted
+  });
 
   const { error } = await supabase
     .from('user_progress')

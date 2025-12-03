@@ -514,7 +514,16 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
   const progress = ((currentSlide + 1) / module.slides.length) * 100;
 
   // Verifica se l'utente è uno studente (non admin/teacher)
-  const isStudentUser = currentUser?.id && currentUser?.role !== 'admin' && currentUser?.role !== 'teacher';
+  // Deve avere un id e il ruolo deve essere esplicitamente 'student'
+  const isStudentUser = !!(currentUser?.id && currentUser?.role === 'student');
+
+  // Debug all'avvio del componente
+  console.log('[ModuloDinamico] Component rendered with:', {
+    currentUserId: currentUser?.id,
+    currentUserRole: currentUser?.role,
+    isStudentUser,
+    moduleId: module.id
+  });
 
   // Inizializza il progresso quando il modulo viene aperto (solo per studenti)
   useEffect(() => {
@@ -547,11 +556,14 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
   // Traccia il completamento della slide quando l'utente la visualizza
   useEffect(() => {
     const trackSlideView = async () => {
+      // Verifica condizioni necessarie
+      const canTrack = currentUser?.id && currentUser?.role === 'student' && progressInitialized;
+
       // Debug log
       console.log('[ModuloDinamico] trackSlideView called', {
         userId: currentUser?.id,
         userRole: currentUser?.role,
-        isStudentUser,
+        canTrack,
         progressInitialized,
         currentSlide: currentSlide + 1,
         totalSlides: module.slides.length,
@@ -559,30 +571,35 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
       });
 
       // Solo per studenti, non per admin/docenti
-      if (isStudentUser && progressInitialized) {
-        // Aggiorna la posizione corrente
-        await updateSlidePosition(currentUser!.id, module.id, currentSlide + 1, module.titolo);
-        // Segna la slide come completata
-        const isCompleted = await markSlideCompleted(
-          currentUser!.id,
-          module.id,
-          currentSlide + 1,
-          module.slides.length,
-          module.titolo
-        );
+      if (canTrack) {
+        try {
+          // Aggiorna la posizione corrente
+          await updateSlidePosition(currentUser!.id, module.id, currentSlide + 1, module.titolo);
+          // Segna la slide come completata
+          const isCompleted = await markSlideCompleted(
+            currentUser!.id,
+            module.id,
+            currentSlide + 1,
+            module.slides.length,
+            module.titolo
+          );
 
-        console.log('[ModuloDinamico] markSlideCompleted returned:', isCompleted);
+          console.log('[ModuloDinamico] markSlideCompleted returned:', isCompleted);
 
-        // Se il modulo è stato appena completato, mostra il modal
-        if (isCompleted && !moduleCompleted) {
-          console.log('[ModuloDinamico] Showing completion modal!');
-          setModuleCompleted(true);
-          setShowCompletionModal(true);
+          // Se il modulo è stato appena completato, mostra il modal
+          if (isCompleted) {
+            console.log('[ModuloDinamico] Showing completion modal!');
+            setModuleCompleted(true);
+            setShowCompletionModal(true);
+          }
+        } catch (err) {
+          console.error('[ModuloDinamico] Error tracking slide:', err);
         }
       }
     };
     trackSlideView();
-  }, [currentSlide, currentUser?.id, currentUser?.role, module.id, module.titolo, module.slides.length, progressInitialized, moduleCompleted, isStudentUser]);
+    // Rimuovo moduleCompleted dalle dipendenze per evitare loop
+  }, [currentSlide, currentUser?.id, currentUser?.role, module.id, module.titolo, module.slides.length, progressInitialized]);
 
   // Funzione per salvare il modulo su Supabase
   const saveModuleToDb = async (updatedModule: ModuleJSON) => {
