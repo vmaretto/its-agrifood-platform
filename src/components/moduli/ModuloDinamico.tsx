@@ -497,6 +497,8 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
   const [showSpeechPanel, setShowSpeechPanel] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [progressInitialized, setProgressInitialized] = useState(false);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [moduleCompleted, setModuleCompleted] = useState(false);
 
   // Stati per modal video
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -529,17 +531,22 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
         // Aggiorna la posizione corrente
         await updateSlidePosition(currentUser.id, module.id, currentSlide + 1, module.titolo);
         // Segna la slide come completata
-        await markSlideCompleted(
+        const isCompleted = await markSlideCompleted(
           currentUser.id,
           module.id,
           currentSlide + 1,
           module.slides.length,
           module.titolo
         );
+        // Se il modulo è stato appena completato, mostra il modal
+        if (isCompleted && !moduleCompleted) {
+          setModuleCompleted(true);
+          setShowCompletionModal(true);
+        }
       }
     };
     trackSlideView();
-  }, [currentSlide, currentUser?.id, module.id, module.titolo, module.slides.length, progressInitialized]);
+  }, [currentSlide, currentUser?.id, module.id, module.titolo, module.slides.length, progressInitialized, moduleCompleted]);
 
   // Funzione per salvare il modulo su Supabase
   const saveModuleToDb = async (updatedModule: ModuleJSON) => {
@@ -1113,6 +1120,54 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
           <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
           <span>Salvataggio...</span>
         </div>
+      )}
+
+      {/* Modal Completamento Modulo */}
+      {showCompletionModal && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowCompletionModal(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md text-center" onClick={e => e.stopPropagation()}>
+              <div className="p-8">
+                <div className="text-6xl mb-4">🎉</div>
+                <h2 className="text-2xl font-bold text-gray-800 mb-2">Congratulazioni!</h2>
+                <p className="text-gray-600 mb-6">
+                  Hai completato il modulo <span className="font-semibold text-indigo-600">{module.titolo}</span>!
+                </p>
+                <div className="bg-emerald-50 rounded-xl p-4 mb-6">
+                  <div className="flex items-center justify-center gap-4">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-emerald-600">+50</div>
+                      <div className="text-sm text-emerald-700">punti bonus</div>
+                    </div>
+                    <div className="w-px h-12 bg-emerald-200"></div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-emerald-600">{module.slides.length}</div>
+                      <div className="text-sm text-emerald-700">slide completate</div>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowCompletionModal(false)}
+                    className="flex-1 px-4 py-3 bg-gray-100 text-gray-700 rounded-xl font-medium hover:bg-gray-200 transition-colors"
+                  >
+                    Continua a esplorare
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCompletionModal(false);
+                      onBack?.();
+                    }}
+                    className="flex-1 px-4 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
+                  >
+                    Torna al percorso
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

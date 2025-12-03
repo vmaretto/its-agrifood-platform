@@ -19,26 +19,158 @@ import { getCurrentUser, signOut, UserProfile } from '@/services/authService';
 // ============================================
 
 const AdminDashboard = () => {
-  const stats = [
-    { label: 'Studenti iscritti', value: 24, icon: '👥', color: 'bg-blue-500' },
-    { label: 'Moduli completati', value: 48, icon: '📚', color: 'bg-emerald-500' },
-    { label: 'Quiz superati', value: 156, icon: '🧠', color: 'bg-purple-500' },
-    { label: 'Ore di formazione', value: 320, icon: '⏱️', color: 'bg-amber-500' },
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [stats, setStats] = React.useState({
+    studentsCount: 0,
+    modulesCompleted: 0,
+    quizzesPassed: 0,
+    totalSlides: 0
+  });
+  const [recentActivities, setRecentActivities] = React.useState<import('@/services/activitiesService').Activity[]>([]);
+  const [teams, setTeams] = React.useState<import('@/services/teamsService').Team[]>([]);
+  const [modules, setModules] = React.useState<{ id: string; titolo: string; completedBy: number }[]>([]);
+  const [totalStudents, setTotalStudents] = React.useState(0);
+
+  // Carica tutti i dati da Supabase
+  React.useEffect(() => {
+    const loadData = async () => {
+      setIsLoading(true);
+      try {
+        const { supabase } = await import('@/lib/supabase');
+        const { getRecentActivities } = await import('@/services/activitiesService');
+        const { getTeams } = await import('@/services/teamsService');
+        const { getModules } = await import('@/services/moduliStorage');
+
+        // Conta studenti
+        const { count: studentsCount } = await supabase
+          .from('students')
+          .select('*', { count: 'exact', head: true });
+
+        // Conta moduli completati totali
+        const { count: modulesCompleted } = await supabase
+          .from('user_progress')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_completed', true);
+
+        // Conta quiz corretti
+        const { count: quizzesPassed } = await supabase
+          .from('student_quiz_scores')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_correct', true);
+
+        // Conta slide viste totali
+        const { data: progressData } = await supabase
+          .from('user_progress')
+          .select('completed_slides');
+
+        let totalSlides = 0;
+        if (progressData) {
+          for (const p of progressData) {
+            if (p.completed_slides && Array.isArray(p.completed_slides)) {
+              totalSlides += p.completed_slides.length;
+            }
+          }
+        }
+
+        setStats({
+          studentsCount: studentsCount || 0,
+          modulesCompleted: modulesCompleted || 0,
+          quizzesPassed: quizzesPassed || 0,
+          totalSlides
+        });
+        setTotalStudents(studentsCount || 0);
+
+        // Carica attività recenti
+        const activities = await getRecentActivities(10);
+        setRecentActivities(activities);
+
+        // Carica classifica squadre
+        const teamsData = await getTeams();
+        setTeams(teamsData);
+
+        // Carica moduli con conteggio completamenti
+        const modulesData = await getModules();
+        const modulesWithProgress = await Promise.all(
+          modulesData.map(async (m) => {
+            const { count } = await supabase
+              .from('user_progress')
+              .select('*', { count: 'exact', head: true })
+              .eq('module_id', m.id)
+              .eq('is_completed', true);
+            return {
+              id: m.id,
+              titolo: m.titolo,
+              completedBy: count || 0
+            };
+          })
+        );
+        setModules(modulesWithProgress);
+
+      } catch (err) {
+        console.error('Error loading admin dashboard:', err);
+      }
+      setIsLoading(false);
+    };
+    loadData();
+  }, []);
+
+  // Helper per formattare tempo relativo
+  const formatTime = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMin = Math.floor(diffMs / 60000);
+    const diffHour = Math.floor(diffMin / 60);
+    const diffDay = Math.floor(diffHour / 24);
+
+    if (diffMin < 1) return 'ora';
+    if (diffMin < 60) return `${diffMin} min fa`;
+    if (diffHour < 24) return `${diffHour} ${diffHour === 1 ? 'ora' : 'ore'} fa`;
+    return `${diffDay} ${diffDay === 1 ? 'giorno' : 'giorni'} fa`;
+  };
+
+  // Helper per icona attività
+  const getActivityIcon = (actionType: string) => {
+    switch (actionType) {
+      case 'module_completed': return '✅';
+      case 'module_started': return '▶️';
+      case 'quiz_correct': return '🏆';
+      case 'quiz_completed': return '🧠';
+      case 'slide_viewed': return '📖';
+      case 'badge_earned': return '🎖️';
+      default: return '📝';
+    }
+  };
+
+  // Helper per descrizione attività
+  const getActivityDescription = (activity: import('@/services/activitiesService').Activity) => {
+    switch (activity.action_type) {
+      case 'module_completed': return 'ha completato';
+      case 'module_started': return 'ha iniziato';
+      case 'quiz_correct': return 'ha superato';
+      case 'quiz_completed': return 'ha risposto a';
+      case 'slide_viewed': return 'ha visualizzato';
+      case 'badge_earned': return 'ha ottenuto';
+      default: return 'ha fatto';
+    }
+  };
+
+  const statCards = [
+    { label: 'Studenti iscritti', value: stats.studentsCount, icon: '👥', color: 'bg-blue-500' },
+    { label: 'Moduli completati', value: stats.modulesCompleted, icon: '📚', color: 'bg-emerald-500' },
+    { label: 'Quiz superati', value: stats.quizzesPassed, icon: '🧠', color: 'bg-purple-500' },
+    { label: 'Slide visualizzate', value: stats.totalSlides, icon: '📖', color: 'bg-amber-500' },
   ];
 
-  const recentActivity = [
-    { user: 'Marco Rossi', action: 'ha completato', target: 'Slide 5 - Sostenibilità', time: '5 min fa', icon: '✅' },
-    { user: 'Laura Bianchi', action: 'ha iniziato', target: 'Trend Tecnologici 2026+', time: '12 min fa', icon: '▶️' },
-    { user: 'Giuseppe Verdi', action: 'ha superato', target: 'Quiz Supply Chain', time: '1 ora fa', icon: '🏆' },
-    { user: 'Anna Neri', action: 'ha commentato', target: 'Case Study Barilla', time: '2 ore fa', icon: '💬' },
-  ];
+  const moduleColors = ['bg-emerald-500', 'bg-indigo-500', 'bg-purple-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500'];
 
-  const squadreClassifica = [
-    { nome: 'AgriTech Pioneers', punti: 850, membri: 6, trend: '+12%' },
-    { nome: 'Farm Innovators', punti: 720, membri: 6, trend: '+8%' },
-    { nome: 'Green Data', punti: 680, membri: 6, trend: '+5%' },
-    { nome: 'Blockchain Farmers', punti: 590, membri: 6, trend: '+3%' },
-  ];
+  if (isLoading) {
+    return (
+      <div className="p-8">
+        <div className="text-center py-12 text-gray-500">Caricamento dashboard...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8">
@@ -49,7 +181,7 @@ const AdminDashboard = () => {
 
       {/* Stats Grid */}
       <div className="grid grid-cols-4 gap-6 mb-8">
-        {stats.map((stat, idx) => (
+        {statCards.map((stat, idx) => (
           <div key={idx} className="bg-white rounded-2xl p-6 shadow-sm">
             <div className={`w-12 h-12 ${stat.color} rounded-xl flex items-center justify-center text-white text-2xl mb-4`}>
               {stat.icon}
@@ -65,19 +197,25 @@ const AdminDashboard = () => {
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <h3 className="font-semibold text-gray-800 mb-4">🕐 Attività Recente</h3>
           <div className="space-y-4">
-            {recentActivity.map((activity, idx) => (
-              <div key={idx} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                <span className="text-xl">{activity.icon}</span>
-                <div className="flex-1">
-                  <div className="text-sm">
-                    <span className="font-semibold">{activity.user}</span>
-                    <span className="text-gray-500"> {activity.action} </span>
-                    <span className="font-medium text-indigo-600">{activity.target}</span>
+            {recentActivities.length === 0 ? (
+              <div className="text-center py-4 text-gray-500">Nessuna attività recente</div>
+            ) : (
+              recentActivities.map((activity) => (
+                <div key={activity.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <span className="text-xl">{getActivityIcon(activity.action_type)}</span>
+                  <div className="flex-1">
+                    <div className="text-sm">
+                      <span className="font-semibold">
+                        {activity.first_name} {activity.last_name}
+                      </span>
+                      <span className="text-gray-500"> {getActivityDescription(activity)} </span>
+                      <span className="font-medium text-indigo-600">{activity.target_name}</span>
+                    </div>
+                    <div className="text-xs text-gray-400">{formatTime(activity.created_at)}</div>
                   </div>
-                  <div className="text-xs text-gray-400">{activity.time}</div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -85,23 +223,27 @@ const AdminDashboard = () => {
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <h3 className="font-semibold text-gray-800 mb-4">🏆 Classifica Squadre</h3>
           <div className="space-y-3">
-            {squadreClassifica.map((squadra, idx) => (
-              <div key={idx} className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold ${
-                  idx === 0 ? 'bg-amber-500' : idx === 1 ? 'bg-gray-400' : idx === 2 ? 'bg-amber-700' : 'bg-gray-300'
-                }`}>
-                  {idx + 1}
+            {teams.length === 0 ? (
+              <div className="text-center py-4 text-gray-500">Nessuna squadra configurata</div>
+            ) : (
+              teams.map((team, idx) => (
+                <div key={team.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl">
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold`}
+                    style={{ backgroundColor: team.color || (idx === 0 ? '#f59e0b' : idx === 1 ? '#9ca3af' : idx === 2 ? '#92400e' : '#d1d5db') }}
+                  >
+                    {idx + 1}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-800">{team.name}</div>
+                    <div className="text-xs text-gray-500">{team.member_count || 0} membri</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-gray-800">{team.total_points || 0} pt</div>
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <div className="font-semibold text-gray-800">{squadra.nome}</div>
-                  <div className="text-xs text-gray-500">{squadra.membri} membri</div>
-                </div>
-                <div className="text-right">
-                  <div className="font-bold text-gray-800">{squadra.punti} pt</div>
-                  <div className="text-xs text-emerald-600">{squadra.trend}</div>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -110,25 +252,26 @@ const AdminDashboard = () => {
       <div className="mt-6 bg-white rounded-2xl p-6 shadow-sm">
         <h3 className="font-semibold text-gray-800 mb-4">📚 Progresso Moduli</h3>
         <div className="space-y-4">
-          {[
-            { nome: 'Tendenze AgrifoodTech', completati: 18, totali: 24, color: 'bg-emerald-500' },
-            { nome: 'Trend Tecnologici 2026+', completati: 8, totali: 24, color: 'bg-indigo-500' },
-            { nome: 'Blockchain per il Food', completati: 0, totali: 24, color: 'bg-purple-500' },
-            { nome: 'Sostenibilità nel Food', completati: 0, totali: 24, color: 'bg-amber-500' },
-          ].map((modulo, idx) => (
-            <div key={idx}>
-              <div className="flex justify-between text-sm mb-1">
-                <span className="font-medium text-gray-700">{modulo.nome}</span>
-                <span className="text-gray-500">{modulo.completati}/{modulo.totali} studenti</span>
+          {modules.length === 0 ? (
+            <div className="text-center py-4 text-gray-500">Nessun modulo configurato</div>
+          ) : (
+            modules.map((modulo, idx) => (
+              <div key={modulo.id}>
+                <div className="flex justify-between text-sm mb-1">
+                  <span className="font-medium text-gray-700">{modulo.titolo}</span>
+                  <span className="text-gray-500">
+                    {modulo.completedBy}/{totalStudents} studenti
+                  </span>
+                </div>
+                <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full ${moduleColors[idx % moduleColors.length]} rounded-full transition-all duration-500`}
+                    style={{ width: totalStudents > 0 ? `${(modulo.completedBy / totalStudents) * 100}%` : '0%' }}
+                  />
+                </div>
               </div>
-              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className={`h-full ${modulo.color} rounded-full transition-all duration-500`}
-                  style={{ width: `${(modulo.completati / modulo.totali) * 100}%` }}
-                />
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>
