@@ -96,21 +96,11 @@ const PercorsoView: React.FC<PercorsoViewProps> = ({ setActiveModule }) => {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-2 gap-4 mb-8">
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <div className="text-2xl mb-1">📚</div>
           <div className="text-2xl font-bold text-gray-800">{moduli.length}</div>
           <div className="text-sm text-gray-500">Moduli</div>
-        </div>
-        <div className="bg-white rounded-xl p-4 shadow-sm">
-          <div className="text-2xl mb-1">📝</div>
-          <div className="text-2xl font-bold text-gray-800">
-            {moduli.reduce((acc, m) => {
-              const match = m.durata.match(/(\d+)/);
-              return acc + (match ? parseInt(match[1]) : 0);
-            }, 0)}h
-          </div>
-          <div className="text-sm text-gray-500">Totali</div>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <div className="text-2xl mb-1">🎯</div>
@@ -145,7 +135,6 @@ const PercorsoView: React.FC<PercorsoViewProps> = ({ setActiveModule }) => {
                   </div>
                   <div className="flex-1">
                     <div className="font-medium">{modulo.titolo}</div>
-                    <div className="text-sm opacity-70">{modulo.durata}</div>
                     {modulo.descrizione && (
                       <div className="text-xs opacity-60 mt-1">{modulo.descrizione}</div>
                     )}
