@@ -15,6 +15,21 @@ import { checkAndAwardBadges } from '@/services/badgesService';
 // COMPONENTI HELPER
 // ============================================
 
+// Funzione helper per formattare il tempo
+const formatTimeSpent = (seconds: number): string => {
+  if (seconds < 60) {
+    return `${seconds} secondi`;
+  }
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  if (minutes < 60) {
+    return remainingSeconds > 0 ? `${minutes} min ${remainingSeconds} sec` : `${minutes} minuti`;
+  }
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  return `${hours}h ${remainingMinutes}min`;
+};
+
 const AnimatedCounter = ({ value, suffix = '', duration = 2000 }: { value: number; suffix?: string; duration?: number }) => {
   const [count, setCount] = useState(0);
 
@@ -499,6 +514,10 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
   const [progressInitialized, setProgressInitialized] = useState(false);
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [moduleCompleted, setModuleCompleted] = useState(false);
+
+  // Time tracking
+  const [moduleStartTime] = useState<number>(Date.now());
+  const [timeSpentSeconds, setTimeSpentSeconds] = useState<number>(0);
 
   // Stati per modal video
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -1029,11 +1048,15 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
                 onClick={async () => {
                   if (!currentUser?.id) return;
                   try {
+                    // Calcola tempo trascorso
+                    const elapsedSeconds = Math.round((Date.now() - moduleStartTime) / 1000);
+                    setTimeSpentSeconds(elapsedSeconds);
+
                     // Segna come completato direttamente via Supabase
                     const { supabase } = await import('@/lib/supabase');
                     const now = new Date().toISOString();
 
-                    // Upsert con tutti i dati necessari
+                    // Upsert con tutti i dati necessari incluso il tempo
                     await supabase.from('user_progress').upsert({
                       user_id: currentUser.id,
                       module_id: module.id,
@@ -1043,7 +1066,8 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
                       is_completed: true,
                       completed_at: now,
                       started_at: now,
-                      last_accessed_at: now
+                      last_accessed_at: now,
+                      time_spent_seconds: elapsedSeconds
                     }, {
                       onConflict: 'user_id,module_id'
                     });
@@ -1271,6 +1295,15 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
                       <div className="text-2xl font-bold text-emerald-600">{module.slides.length}</div>
                       <div className="text-sm text-emerald-700">slide completate</div>
                     </div>
+                    {timeSpentSeconds > 0 && (
+                      <>
+                        <div className="w-px h-12 bg-emerald-200"></div>
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-emerald-600">{formatTimeSpent(timeSpentSeconds)}</div>
+                          <div className="text-sm text-emerald-700">tempo impiegato</div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
                 <div className="flex gap-3">
