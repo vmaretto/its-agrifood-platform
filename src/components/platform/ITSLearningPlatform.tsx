@@ -277,42 +277,298 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule }: { setActiv
 // AdminSquadre è ora importato da ./AdminSquadre
 
 const AdminBadge = () => {
-  const badges = [
-    { nome: 'Primo Passo', icon: '🎯', descrizione: 'Completa la prima slide', assegnati: 24, colore: 'bg-blue-100' },
-    { nome: 'Quiz Master', icon: '🧠', descrizione: 'Supera 5 quiz con punteggio > 80%', assegnati: 12, colore: 'bg-purple-100' },
-    { nome: 'Team Player', icon: '🤝', descrizione: 'Partecipa a una sfida di squadra', assegnati: 18, colore: 'bg-green-100' },
-    { nome: 'Blockchain Expert', icon: '⛓️', descrizione: 'Completa il modulo Blockchain', assegnati: 0, colore: 'bg-indigo-100' },
-    { nome: 'Innovatore', icon: '💡', descrizione: 'Proponi un idea all hackathon', assegnati: 0, colore: 'bg-amber-100' },
-    { nome: 'Campione', icon: '🏆', descrizione: 'Vinci l hackathon finale', assegnati: 0, colore: 'bg-yellow-100' },
-  ];
+  const [badges, setBadges] = React.useState<import('@/services/badgesService').Badge[]>([]);
+  const [isLoading, setIsLoading] = React.useState(true);
+  const [showModal, setShowModal] = React.useState(false);
+  const [editingBadge, setEditingBadge] = React.useState<import('@/services/badgesService').Badge | null>(null);
+
+  // Form state
+  const [formData, setFormData] = React.useState({
+    name: '',
+    description: '',
+    icon: '🏆',
+    criteria_type: 'manual' as 'manual' | 'points' | 'modules' | 'quizzes' | 'team' | 'slides',
+    criteria_value: 0,
+    points_reward: 0,
+    is_active: true
+  });
+
+  // Carica i badge da Supabase
+  const loadBadges = async () => {
+    setIsLoading(true);
+    try {
+      const { getBadges } = await import('@/services/badgesService');
+      const data = await getBadges();
+      setBadges(data);
+    } catch (err) {
+      console.error('Error loading badges:', err);
+    }
+    setIsLoading(false);
+  };
+
+  React.useEffect(() => {
+    loadBadges();
+  }, []);
+
+  // Apri modal per nuovo badge
+  const handleNewBadge = () => {
+    setEditingBadge(null);
+    setFormData({
+      name: '',
+      description: '',
+      icon: '🏆',
+      criteria_type: 'manual',
+      criteria_value: 0,
+      points_reward: 0,
+      is_active: true
+    });
+    setShowModal(true);
+  };
+
+  // Apri modal per modificare badge
+  const handleEditBadge = (badge: import('@/services/badgesService').Badge) => {
+    setEditingBadge(badge);
+    setFormData({
+      name: badge.name,
+      description: badge.description || '',
+      icon: badge.icon,
+      criteria_type: badge.criteria_type,
+      criteria_value: badge.criteria_value,
+      points_reward: badge.points_reward,
+      is_active: badge.is_active
+    });
+    setShowModal(true);
+  };
+
+  // Salva badge (crea o aggiorna)
+  const handleSaveBadge = async () => {
+    try {
+      if (editingBadge) {
+        const { updateBadge } = await import('@/services/badgesService');
+        await updateBadge(editingBadge.id, formData);
+      } else {
+        const { createBadge } = await import('@/services/badgesService');
+        await createBadge(formData);
+      }
+      setShowModal(false);
+      loadBadges();
+    } catch (err) {
+      console.error('Error saving badge:', err);
+      alert('Errore nel salvataggio del badge');
+    }
+  };
+
+  // Elimina badge
+  const handleDeleteBadge = async (id: string) => {
+    if (!confirm('Sei sicuro di voler eliminare questo badge?')) return;
+    try {
+      const { deleteBadge } = await import('@/services/badgesService');
+      await deleteBadge(id);
+      loadBadges();
+    } catch (err) {
+      console.error('Error deleting badge:', err);
+      alert('Errore nell\'eliminazione del badge');
+    }
+  };
+
+  // Colori per tipo criterio
+  const criteriaColors: Record<string, string> = {
+    manual: 'bg-gray-100',
+    points: 'bg-amber-100',
+    modules: 'bg-blue-100',
+    quizzes: 'bg-purple-100',
+    team: 'bg-green-100',
+    slides: 'bg-indigo-100'
+  };
+
+  const criteriaLabels: Record<string, string> = {
+    manual: 'Manuale',
+    points: 'Punti',
+    modules: 'Moduli',
+    quizzes: 'Quiz',
+    team: 'Team',
+    slides: 'Slide'
+  };
 
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">🎖️ Gestione Badge</h1>
-          <p className="text-gray-500">Configura i badge e i criteri di assegnazione</p>
+          <p className="text-gray-500">
+            {isLoading ? 'Caricamento...' : `${badges.length} badge configurati`}
+          </p>
         </div>
-        <button className="px-4 py-2 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition-colors">
+        <button
+          onClick={handleNewBadge}
+          className="px-4 py-2 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition-colors"
+        >
           + Nuovo Badge
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
-        {badges.map((badge, idx) => (
-          <div key={idx} className={`${badge.colore} rounded-2xl p-6`}>
-            <div className="text-4xl mb-3">{badge.icon}</div>
-            <div className="font-bold text-gray-800 mb-1">{badge.nome}</div>
-            <div className="text-sm text-gray-600 mb-4">{badge.descrizione}</div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-500">{badge.assegnati} assegnati</span>
-              <button className="px-3 py-1 text-sm text-indigo-600 hover:bg-white/50 rounded-lg transition-colors">
-                Modifica
-              </button>
+      {isLoading ? (
+        <div className="text-center py-12 text-gray-500">Caricamento badge...</div>
+      ) : badges.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          Nessun badge configurato. Clicca su "Nuovo Badge" per crearne uno.
+        </div>
+      ) : (
+        <div className="grid grid-cols-3 gap-6">
+          {badges.map((badge) => (
+            <div key={badge.id} className={`${criteriaColors[badge.criteria_type] || 'bg-gray-100'} rounded-2xl p-6`}>
+              <div className="flex items-start justify-between">
+                <div className="text-4xl mb-3">{badge.icon}</div>
+                {!badge.is_active && (
+                  <span className="text-xs bg-gray-300 text-gray-600 px-2 py-1 rounded">Disattivo</span>
+                )}
+              </div>
+              <div className="font-bold text-gray-800 mb-1">{badge.name}</div>
+              <div className="text-sm text-gray-600 mb-2">{badge.description}</div>
+              <div className="text-xs text-gray-500 mb-4">
+                <span className="bg-white/50 px-2 py-1 rounded mr-2">
+                  {criteriaLabels[badge.criteria_type]}: {badge.criteria_value}
+                </span>
+                <span className="bg-white/50 px-2 py-1 rounded">
+                  +{badge.points_reward} pt
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-500">{badge.times_awarded || 0} assegnati</span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleEditBadge(badge)}
+                    className="px-3 py-1 text-sm text-indigo-600 hover:bg-white/50 rounded-lg transition-colors"
+                  >
+                    Modifica
+                  </button>
+                  <button
+                    onClick={() => handleDeleteBadge(badge.id)}
+                    className="px-3 py-1 text-sm text-red-600 hover:bg-white/50 rounded-lg transition-colors"
+                  >
+                    Elimina
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Modal Crea/Modifica Badge */}
+      {showModal && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowModal(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+              <div className="p-6 border-b">
+                <h3 className="text-lg font-bold text-gray-800">
+                  {editingBadge ? 'Modifica Badge' : 'Nuovo Badge'}
+                </h3>
+              </div>
+              <div className="p-6 space-y-4">
+                <div className="grid grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Icona</label>
+                    <input
+                      type="text"
+                      value={formData.icon}
+                      onChange={e => setFormData({ ...formData, icon: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg text-2xl text-center"
+                      maxLength={4}
+                    />
+                  </div>
+                  <div className="col-span-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Nome *</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={e => setFormData({ ...formData, name: e.target.value })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      placeholder="Nome del badge"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Descrizione</label>
+                  <textarea
+                    value={formData.description}
+                    onChange={e => setFormData({ ...formData, description: e.target.value })}
+                    className="w-full px-3 py-2 border rounded-lg"
+                    rows={2}
+                    placeholder="Descrizione del badge"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Tipo Criterio</label>
+                    <select
+                      value={formData.criteria_type}
+                      onChange={e => setFormData({ ...formData, criteria_type: e.target.value as typeof formData.criteria_type })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                    >
+                      <option value="manual">Manuale</option>
+                      <option value="points">Punti raggiunt</option>
+                      <option value="modules">Moduli completati</option>
+                      <option value="quizzes">Quiz corretti</option>
+                      <option value="slides">Slide viste</option>
+                      <option value="team">Membro di un team</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Valore Criterio</label>
+                    <input
+                      type="number"
+                      value={formData.criteria_value}
+                      onChange={e => setFormData({ ...formData, criteria_value: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      min={0}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Punti Bonus</label>
+                    <input
+                      type="number"
+                      value={formData.points_reward}
+                      onChange={e => setFormData({ ...formData, points_reward: parseInt(e.target.value) || 0 })}
+                      className="w-full px-3 py-2 border rounded-lg"
+                      min={0}
+                    />
+                  </div>
+                  <div className="flex items-center pt-6">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.is_active}
+                        onChange={e => setFormData({ ...formData, is_active: e.target.checked })}
+                        className="w-4 h-4 text-emerald-600 rounded"
+                      />
+                      <span className="text-sm text-gray-700">Badge attivo</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 border-t bg-gray-50 flex justify-end gap-2">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleSaveBadge}
+                  disabled={!formData.name}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50"
+                >
+                  {editingBadge ? 'Salva Modifiche' : 'Crea Badge'}
+                </button>
+              </div>
             </div>
           </div>
-        ))}
-      </div>
+        </>
+      )}
     </div>
   );
 };
