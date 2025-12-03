@@ -140,61 +140,88 @@ export async function markSlideCompleted(
   moduleName: string
 ): Promise<boolean> {
   console.log('[markSlideCompleted] Called with:', { userId, moduleId, slideNumber, totalSlides, moduleName });
+  const now = new Date().toISOString();
 
-  // Step 1: Prova a leggere il record esistente
-  const { data: existingData, error: selectError } = await supabase
+  // Step 1: Assicurati che il record esista (INSERT se non esiste, ignora se esiste)
+  const { error: insertError } = await supabase
     .from('user_progress')
-    .select('completed_slides, is_completed, quiz_scores')
-    .eq('user_id', userId)
-    .eq('module_id', moduleId)
-    .maybeSingle();
+    .upsert({
+      user_id: userId,
+      module_id: moduleId,
+      current_slide: slideNumber,
+      completed_slides: [],
+      quiz_scores: {},
+      is_completed: false,
+      started_at: now,
+      last_accessed_at: now
+    }, {
+      onConflict: 'user_id,module_id',
+      ignoreDuplicates: true
+    });
 
-  if (selectError) {
-    console.error('[markSlideCompleted] Select error:', selectError);
+  if (insertError) {
+    console.error('[markSlideCompleted] Insert error:', insertError);
   }
 
-  console.log('[markSlideCompleted] Existing data:', existingData);
+  // Step 2: Leggi lo stato attuale (ora il record deve esistere)
+  const { data: current, error: selectError } = await supabase
+    .from('user_progress')
+    .select('completed_slides, is_completed')
+    .eq('user_id', userId)
+    .eq('module_id', moduleId)
+    .single();
 
-  // Step 2: Calcola il nuovo array di slide completate
-  const existingSlides: number[] = existingData?.completed_slides || [];
-  const wasAlreadyCompleted = existingData?.is_completed || false;
+  if (selectError || !current) {
+    console.error('[markSlideCompleted] Select error or no data:', selectError);
+    return false;
+  }
 
-  // Aggiungi la slide corrente se non già presente
+  console.log('[markSlideCompleted] Current state:', current);
+
+  const existingSlides: number[] = current.completed_slides || [];
+  const wasAlreadyCompleted = current.is_completed;
+
+  // Se già completato, non fare nulla
+  if (wasAlreadyCompleted) {
+    console.log('[markSlideCompleted] Module already completed, skipping');
+    return false;
+  }
+
+  // Step 3: Aggiungi slide se non presente
   const newSlides = existingSlides.includes(slideNumber)
     ? existingSlides
     : [...existingSlides, slideNumber];
 
-  const isCompleted = newSlides.length >= totalSlides;
+  const isNowCompleted = newSlides.length >= totalSlides;
 
   console.log('[markSlideCompleted] Slide tracking:', {
     existingSlides,
     newSlides,
     completedSlidesCount: newSlides.length,
     totalSlides,
-    isCompleted,
-    wasAlreadyCompleted,
-    willReturnTrue: isCompleted && !wasAlreadyCompleted
+    isNowCompleted
   });
 
-  // Step 3: Upsert con i dati calcolati
-  const { error: upsertError } = await supabase
-    .from('user_progress')
-    .upsert({
-      user_id: userId,
-      module_id: moduleId,
-      current_slide: slideNumber,
-      completed_slides: newSlides,
-      quiz_scores: existingData?.quiz_scores || {},
-      is_completed: isCompleted,
-      completed_at: isCompleted && !wasAlreadyCompleted ? new Date().toISOString() : null,
-      started_at: existingData ? undefined : new Date().toISOString(),
-      last_accessed_at: new Date().toISOString()
-    }, {
-      onConflict: 'user_id,module_id'
-    });
+  // Step 4: Aggiorna con i nuovi dati (solo campi che vogliamo aggiornare)
+  const updateData: Record<string, unknown> = {
+    current_slide: slideNumber,
+    completed_slides: newSlides,
+    last_accessed_at: now
+  };
 
-  if (upsertError) {
-    console.error('[markSlideCompleted] Upsert error:', upsertError);
+  if (isNowCompleted) {
+    updateData.is_completed = true;
+    updateData.completed_at = now;
+  }
+
+  const { error: updateError } = await supabase
+    .from('user_progress')
+    .update(updateData)
+    .eq('user_id', userId)
+    .eq('module_id', moduleId);
+
+  if (updateError) {
+    console.error('[markSlideCompleted] Update error:', updateError);
     return false;
   }
 
@@ -205,8 +232,8 @@ export async function markSlideCompleted(
     await logSlideViewed(userId, moduleId, moduleName, slideNumber);
   }
 
-  // Step 4: Se modulo completato per la prima volta, log e badge
-  if (isCompleted && !wasAlreadyCompleted) {
+  // Step 5: Se modulo completato per la prima volta, log e badge
+  if (isNowCompleted) {
     console.log('[markSlideCompleted] Module completed for the first time!');
     await logModuleCompleted(userId, moduleId, moduleName, 50);
 
@@ -222,10 +249,10 @@ export async function markSlideCompleted(
 
     // Check for new badges
     await checkAndAwardBadges(userId);
+    return true;
   }
 
-  // Ritorna true solo se il modulo è stato completato per la PRIMA volta
-  return isCompleted && !wasAlreadyCompleted;
+  return false;
 }
 
 export async function saveQuizProgress(
