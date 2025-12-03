@@ -36,6 +36,7 @@ interface StudentWithProgress {
   last_name: string;
   email: string;
   points: number;
+  team_id?: string;
   team_name?: string;
   team_color?: string;
   modules_completed: number;
@@ -66,6 +67,13 @@ const AdminDashboard = () => {
   const [selectedStudent, setSelectedStudent] = React.useState<StudentWithProgress | null>(null);
   const [studentProgress, setStudentProgress] = React.useState<{ module_id: string; module_name: string; is_completed: boolean; time_spent: number; completed_slides: number; total_slides: number }[]>([]);
   const [isLoadingStudentProgress, setIsLoadingStudentProgress] = React.useState(false);
+
+  // Stato per il modal bonus studente
+  const [showBonusModal, setShowBonusModal] = React.useState(false);
+  const [bonusStudent, setBonusStudent] = React.useState<StudentWithProgress | null>(null);
+  const [bonusPoints, setBonusPoints] = React.useState(10);
+  const [bonusReason, setBonusReason] = React.useState('');
+  const [isAssigningBonus, setIsAssigningBonus] = React.useState(false);
 
   // Carica tutti i dati da Supabase
   React.useEffect(() => {
@@ -129,11 +137,23 @@ const AdminDashboard = () => {
         const teamsData = await getTeams();
         setTeams(teamsData);
 
-        // Carica lista studenti con progresso
+        // Carica lista studenti con progresso (usa tabella students per avere team_id)
         const { data: studentsData } = await supabase
+          .from('students')
+          .select('id, first_name, last_name, email, team_id')
+          .order('first_name', { ascending: true });
+
+        // Carica anche i punti dalla leaderboard
+        const { data: leaderboardData } = await supabase
           .from('students_leaderboard')
-          .select('id, first_name, last_name, email, points, team_id')
-          .order('points', { ascending: false });
+          .select('id, points');
+
+        const pointsMap: Record<string, number> = {};
+        if (leaderboardData) {
+          for (const lb of leaderboardData) {
+            pointsMap[lb.id] = lb.points || 0;
+          }
+        }
 
         if (studentsData) {
           // Per ogni studente, calcola i moduli completati e il tempo totale
@@ -161,7 +181,8 @@ const AdminDashboard = () => {
                 first_name: s.first_name,
                 last_name: s.last_name,
                 email: s.email,
-                points: s.points || 0,
+                points: pointsMap[s.id] || 0,
+                team_id: s.team_id,
                 team_name: team?.name,
                 team_color: team?.color,
                 modules_completed: modulesCompleted,
@@ -169,6 +190,8 @@ const AdminDashboard = () => {
               };
             })
           );
+          // Ordina per punti decrescenti
+          studentsWithProgress.sort((a, b) => b.points - a.points);
           setStudents(studentsWithProgress);
         }
 
@@ -249,6 +272,53 @@ const AdminDashboard = () => {
       setStudentProgress([]);
     }
     setIsLoadingStudentProgress(false);
+  };
+
+  // Apri modal per assegnare bonus a studente
+  const handleOpenBonusModal = (student: StudentWithProgress, e: React.MouseEvent) => {
+    e.stopPropagation(); // Evita di aprire il modal dettaglio
+    setBonusStudent(student);
+    setBonusPoints(10);
+    setBonusReason('');
+    setShowBonusModal(true);
+  };
+
+  // Assegna bonus allo studente
+  const handleAssignBonus = async () => {
+    if (!bonusStudent || bonusPoints <= 0 || !bonusReason.trim()) return;
+
+    setIsAssigningBonus(true);
+    try {
+      const { supabase } = await import('@/lib/supabase');
+
+      // Inserisci il bonus nella tabella bonus_points
+      // Il bonus viene associato allo studente E alla sua squadra (se presente)
+      const { error } = await supabase.from('bonus_points').insert([{
+        student_id: bonusStudent.id,
+        team_id: bonusStudent.team_id || null,
+        points: bonusPoints,
+        reason: bonusReason.trim(),
+        assigned_by: 'teacher'
+      }]);
+
+      if (error) {
+        console.error('Error assigning bonus:', error);
+        alert('Errore nell\'assegnazione del bonus');
+      } else {
+        // Aggiorna la lista studenti
+        setStudents(prev => prev.map(s =>
+          s.id === bonusStudent.id
+            ? { ...s, points: s.points + bonusPoints }
+            : s
+        ));
+        setShowBonusModal(false);
+        setBonusStudent(null);
+      }
+    } catch (err) {
+      console.error('Error assigning bonus:', err);
+      alert('Errore nell\'assegnazione del bonus');
+    }
+    setIsAssigningBonus(false);
   };
 
   // Helper per formattare tempo relativo
@@ -432,13 +502,14 @@ const AdminDashboard = () => {
                 <th className="text-center p-3 font-semibold text-gray-600 text-sm">Squadra</th>
                 <th className="text-center p-3 font-semibold text-gray-600 text-sm">Moduli</th>
                 <th className="text-center p-3 font-semibold text-gray-600 text-sm">Tempo</th>
-                <th className="text-right p-3 font-semibold text-gray-600 text-sm">Punti</th>
+                <th className="text-center p-3 font-semibold text-gray-600 text-sm">Punti</th>
+                <th className="text-right p-3 font-semibold text-gray-600 text-sm">Azioni</th>
               </tr>
             </thead>
             <tbody>
               {students.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="text-center py-4 text-gray-500">
+                  <td colSpan={6} className="text-center py-4 text-gray-500">
                     Nessuno studente trovato
                   </td>
                 </tr>
@@ -480,8 +551,17 @@ const AdminDashboard = () => {
                     <td className="p-3 text-center">
                       <span className="text-gray-600">{formatTotalTime(student.total_time_seconds)}</span>
                     </td>
-                    <td className="p-3 text-right">
+                    <td className="p-3 text-center">
                       <span className="font-bold text-indigo-600">{student.points} pt</span>
+                    </td>
+                    <td className="p-3 text-right">
+                      <button
+                        onClick={(e) => handleOpenBonusModal(student, e)}
+                        className="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-200 transition-colors"
+                        title="Assegna bonus"
+                      >
+                        +Bonus
+                      </button>
                     </td>
                   </tr>
                 ))
@@ -633,6 +713,81 @@ const AdminDashboard = () => {
                   className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
                 >
                   Chiudi
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Modal Assegna Bonus */}
+      {showBonusModal && bonusStudent && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowBonusModal(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="p-6 border-b bg-gradient-to-r from-emerald-500 to-teal-600">
+                <div className="flex items-center justify-between">
+                  <div className="text-white">
+                    <h2 className="text-xl font-bold">Assegna Bonus</h2>
+                    <p className="text-sm opacity-90">
+                      {bonusStudent.first_name} {bonusStudent.last_name}
+                      {bonusStudent.team_name && ` - ${bonusStudent.team_name}`}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowBonusModal(false)}
+                    className="text-white/80 hover:text-white text-2xl"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+
+              {/* Contenuto */}
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Punti da assegnare</label>
+                  <input
+                    type="number"
+                    value={bonusPoints}
+                    onChange={(e) => setBonusPoints(Math.max(1, parseInt(e.target.value) || 0))}
+                    min={1}
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Motivazione *</label>
+                  <textarea
+                    value={bonusReason}
+                    onChange={(e) => setBonusReason(e.target.value)}
+                    rows={3}
+                    placeholder="Es: Partecipazione attiva in classe, Aiuto ai compagni..."
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+                {bonusStudent.team_name && (
+                  <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
+                    I punti verranno assegnati anche alla squadra <strong>{bonusStudent.team_name}</strong>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="border-t p-4 bg-gray-50 flex gap-2">
+                <button
+                  onClick={() => setShowBonusModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleAssignBonus}
+                  disabled={isAssigningBonus || !bonusReason.trim() || bonusPoints <= 0}
+                  className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isAssigningBonus ? 'Assegnazione...' : `Assegna +${bonusPoints} pt`}
                 </button>
               </div>
             </div>
