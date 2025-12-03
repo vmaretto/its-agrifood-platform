@@ -141,41 +141,30 @@ export async function markSlideCompleted(
 ): Promise<boolean> {
   console.log('[markSlideCompleted] Called with:', { userId, moduleId, slideNumber, totalSlides, moduleName });
 
-  // Approccio diretto come saveQuizAnswer: upsert senza SELECT preventivo
-  // Step 1: Upsert per creare/aggiornare il record base e recuperare i dati attuali
-  const { data: upsertResult, error: upsertError } = await supabase
+  // Step 1: Prova a leggere il record esistente
+  const { data: existingData, error: selectError } = await supabase
     .from('user_progress')
-    .upsert({
-      user_id: userId,
-      module_id: moduleId,
-      current_slide: slideNumber,
-      completed_slides: [slideNumber], // Default per nuovo record
-      quiz_scores: {},
-      is_completed: false,
-      started_at: new Date().toISOString(),
-      last_accessed_at: new Date().toISOString()
-    }, {
-      onConflict: 'user_id,module_id',
-      ignoreDuplicates: false
-    })
-    .select('completed_slides, is_completed')
-    .single();
+    .select('completed_slides, is_completed, quiz_scores')
+    .eq('user_id', userId)
+    .eq('module_id', moduleId)
+    .maybeSingle();
 
-  if (upsertError) {
-    console.error('[markSlideCompleted] Upsert error:', upsertError);
-    return false;
+  if (selectError) {
+    console.error('[markSlideCompleted] Select error:', selectError);
   }
 
-  console.log('[markSlideCompleted] Upsert result:', upsertResult);
+  console.log('[markSlideCompleted] Existing data:', existingData);
 
   // Step 2: Calcola il nuovo array di slide completate
-  const existingSlides: number[] = upsertResult?.completed_slides || [];
+  const existingSlides: number[] = existingData?.completed_slides || [];
+  const wasAlreadyCompleted = existingData?.is_completed || false;
+
+  // Aggiungi la slide corrente se non già presente
   const newSlides = existingSlides.includes(slideNumber)
     ? existingSlides
     : [...existingSlides, slideNumber];
 
   const isCompleted = newSlides.length >= totalSlides;
-  const wasAlreadyCompleted = upsertResult?.is_completed || false;
 
   console.log('[markSlideCompleted] Slide tracking:', {
     existingSlides,
@@ -187,29 +176,33 @@ export async function markSlideCompleted(
     willReturnTrue: isCompleted && !wasAlreadyCompleted
   });
 
-  // Step 3: Update con le slide completate (solo se cambiato qualcosa)
-  if (!existingSlides.includes(slideNumber) || (isCompleted && !wasAlreadyCompleted)) {
-    const { error: updateError } = await supabase
-      .from('user_progress')
-      .update({
-        completed_slides: newSlides,
-        is_completed: isCompleted,
-        completed_at: isCompleted && !wasAlreadyCompleted ? new Date().toISOString() : undefined,
-        last_accessed_at: new Date().toISOString()
-      })
-      .eq('user_id', userId)
-      .eq('module_id', moduleId);
+  // Step 3: Upsert con i dati calcolati
+  const { error: upsertError } = await supabase
+    .from('user_progress')
+    .upsert({
+      user_id: userId,
+      module_id: moduleId,
+      current_slide: slideNumber,
+      completed_slides: newSlides,
+      quiz_scores: existingData?.quiz_scores || {},
+      is_completed: isCompleted,
+      completed_at: isCompleted && !wasAlreadyCompleted ? new Date().toISOString() : null,
+      started_at: existingData ? undefined : new Date().toISOString(),
+      last_accessed_at: new Date().toISOString()
+    }, {
+      onConflict: 'user_id,module_id'
+    });
 
-    if (updateError) {
-      console.error('[markSlideCompleted] Update error:', updateError);
-    } else {
-      console.log('[markSlideCompleted] Progress updated successfully');
-    }
+  if (upsertError) {
+    console.error('[markSlideCompleted] Upsert error:', upsertError);
+    return false;
+  }
 
-    // Log activity for first time viewing slide
-    if (!existingSlides.includes(slideNumber)) {
-      await logSlideViewed(userId, moduleId, moduleName, slideNumber);
-    }
+  console.log('[markSlideCompleted] Progress saved successfully');
+
+  // Log activity for first time viewing slide
+  if (!existingSlides.includes(slideNumber)) {
+    await logSlideViewed(userId, moduleId, moduleName, slideNumber);
   }
 
   // Step 4: Se modulo completato per la prima volta, log e badge
