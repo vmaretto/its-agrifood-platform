@@ -17,6 +17,7 @@ export interface ModuleProgress {
   started_at?: string;
   completed_at?: string | null;
   last_accessed_at?: string;
+  time_spent_seconds?: number;
 }
 
 export interface UserProgressSummary {

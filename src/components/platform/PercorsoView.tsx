@@ -15,7 +15,15 @@ interface Modulo {
   progresso: number;
   descrizione?: string;
   totalSlides: number;
+  timeSpent?: number; // tempo trascorso in secondi
 }
+
+// Helper per formattare il tempo in mm:ss
+const formatTimeSpent = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
 
 interface PercorsoViewProps {
   setActiveModule: (module: string | null) => void;
@@ -75,6 +83,7 @@ const PercorsoView: React.FC<PercorsoViewProps> = ({ setActiveModule, currentUse
       progresso: progressPercent,
       descrizione: m.descrizione,
       totalSlides,
+      timeSpent: moduleProgress?.time_spent_seconds,
     };
   });
 
@@ -125,7 +134,7 @@ const PercorsoView: React.FC<PercorsoViewProps> = ({ setActiveModule, currentUse
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <div className="text-2xl mb-1">📚</div>
           <div className="text-2xl font-bold text-gray-800">{moduli.length}</div>
@@ -137,6 +146,13 @@ const PercorsoView: React.FC<PercorsoViewProps> = ({ setActiveModule, currentUse
             {moduli.filter(m => m.stato === 'completato').length}
           </div>
           <div className="text-sm text-gray-500">Completati</div>
+        </div>
+        <div className="bg-white rounded-xl p-4 shadow-sm">
+          <div className="text-2xl mb-1">⏱️</div>
+          <div className="text-2xl font-bold text-blue-600">
+            {formatTimeSpent(moduli.reduce((acc, m) => acc + (m.timeSpent || 0), 0))}
+          </div>
+          <div className="text-sm text-gray-500">Tempo Totale</div>
         </div>
         <div className="bg-white rounded-xl p-4 shadow-sm">
           <div className="text-2xl mb-1">🎯</div>
@@ -175,6 +191,13 @@ const PercorsoView: React.FC<PercorsoViewProps> = ({ setActiveModule, currentUse
                     <div className="font-medium">{modulo.titolo}</div>
                     {modulo.descrizione && (
                       <div className="text-xs opacity-60 mt-1">{modulo.descrizione}</div>
+                    )}
+                    {/* Tempo trascorso per moduli completati */}
+                    {modulo.stato === 'completato' && modulo.timeSpent && modulo.timeSpent > 0 && (
+                      <div className="text-xs text-emerald-600 mt-1 flex items-center gap-1">
+                        <span>⏱️</span>
+                        <span>{formatTimeSpent(modulo.timeSpent)}</span>
+                      </div>
                     )}
                     {/* Barra di progresso */}
                     {modulo.progresso > 0 && modulo.progresso < 100 && (
