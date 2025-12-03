@@ -8,7 +8,7 @@ import { saveQuizAnswer } from '@/services/teamsService';
 import { UserProfile } from '@/services/authService';
 import { VisualContentRenderer } from './visual/VisualContentRenderer';
 import { initModuleProgress, markSlideCompleted, saveQuizProgress, updateSlidePosition, getModuleProgress } from '@/services/progressService';
-import { logQuizCompleted } from '@/services/activitiesService';
+import { logQuizCompleted, logModuleCompleted } from '@/services/activitiesService';
 import { checkAndAwardBadges } from '@/services/badgesService';
 
 // ============================================
@@ -1015,6 +1015,78 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
             Successiva →
           </button>
         </div>
+
+        {/* Pulsante Completa Modulo - solo per studenti sull'ultima slide */}
+        {isStudentUser && currentSlide === module.slides.length - 1 && !moduleCompleted && (
+          <div className="mt-8 text-center">
+            <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-2xl p-6 border border-emerald-200">
+              <div className="text-4xl mb-3">🎓</div>
+              <h3 className="text-lg font-bold text-gray-800 mb-2">Hai terminato il modulo?</h3>
+              <p className="text-gray-600 text-sm mb-4">
+                Clicca il pulsante per segnare il modulo come completato e ricevere i punti bonus!
+              </p>
+              <button
+                onClick={async () => {
+                  if (!currentUser?.id) return;
+                  try {
+                    // Segna come completato direttamente via Supabase
+                    const { supabase } = await import('@/lib/supabase');
+                    const now = new Date().toISOString();
+
+                    // Upsert con tutti i dati necessari
+                    await supabase.from('user_progress').upsert({
+                      user_id: currentUser.id,
+                      module_id: module.id,
+                      current_slide: module.slides.length,
+                      completed_slides: Array.from({ length: module.slides.length }, (_, i) => i + 1),
+                      quiz_scores: {},
+                      is_completed: true,
+                      completed_at: now,
+                      started_at: now,
+                      last_accessed_at: now
+                    }, {
+                      onConflict: 'user_id,module_id'
+                    });
+
+                    // Log completamento
+                    await logModuleCompleted(currentUser.id, module.id, module.titolo, 50);
+
+                    // Aggiungi bonus points
+                    await supabase.from('bonus_points').insert([{
+                      student_id: currentUser.id,
+                      points: 50,
+                      reason: `Modulo completato: ${module.titolo}`,
+                      assigned_by: 'system'
+                    }]);
+
+                    // Check badges
+                    await checkAndAwardBadges(currentUser.id);
+
+                    // Mostra modal
+                    setModuleCompleted(true);
+                    setShowCompletionModal(true);
+                  } catch (err) {
+                    console.error('Errore nel completamento modulo:', err);
+                    alert('Errore nel salvare il completamento. Riprova.');
+                  }
+                }}
+                className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold text-lg hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+              >
+                ✅ Completa Modulo e Ottieni +50 Punti
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Badge modulo già completato */}
+        {isStudentUser && moduleCompleted && (
+          <div className="mt-8 text-center">
+            <div className="bg-emerald-50 rounded-2xl p-6 border border-emerald-200">
+              <div className="text-4xl mb-2">✅</div>
+              <p className="text-emerald-700 font-medium">Hai già completato questo modulo!</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Speech Panel per Admin */}
