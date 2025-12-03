@@ -404,6 +404,37 @@ const AdminHackathon = () => {
 };
 
 const AdminSettings = () => {
+  const [isResetting, setIsResetting] = React.useState(false);
+  const [resetMessage, setResetMessage] = React.useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const handleResetAllStatistics = async () => {
+    if (!confirm('⚠️ ATTENZIONE: Questa operazione resetterà TUTTE le statistiche di TUTTI gli studenti.\n\nVerranno eliminati:\n- Progressi dei moduli\n- Punteggi quiz\n- Punti bonus\n- Badge ottenuti\n- Attività recenti\n\nQuesta operazione NON è reversibile. Continuare?')) {
+      return;
+    }
+
+    if (!confirm('Sei ASSOLUTAMENTE sicuro? Tutti i dati degli studenti verranno persi permanentemente.')) {
+      return;
+    }
+
+    setIsResetting(true);
+    setResetMessage(null);
+
+    try {
+      const { resetAllStatistics } = await import('@/services/progressService');
+      const success = await resetAllStatistics();
+      if (success) {
+        setResetMessage({ type: 'success', text: 'Tutte le statistiche sono state resettate con successo.' });
+      } else {
+        setResetMessage({ type: 'error', text: 'Si è verificato un errore durante il reset.' });
+      }
+    } catch (err) {
+      console.error('Error resetting statistics:', err);
+      setResetMessage({ type: 'error', text: 'Errore di connessione durante il reset.' });
+    }
+
+    setIsResetting(false);
+  };
+
   return (
     <div className="p-8">
       <div className="mb-8">
@@ -472,6 +503,44 @@ const AdminSettings = () => {
             <button className="px-4 py-2 bg-indigo-100 text-indigo-700 rounded-lg font-medium hover:bg-indigo-200 transition-colors">
               📥 Report Completo (PDF)
             </button>
+          </div>
+        </div>
+
+        {/* Zona Pericolo - Reset Statistiche */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 border-2 border-red-200">
+          <h3 className="font-semibold text-red-700 mb-4">⚠️ Zona Pericolo</h3>
+          <div className="space-y-4">
+            <div className="p-4 bg-red-50 rounded-lg">
+              <div className="font-medium text-red-800 mb-2">Reset Statistiche</div>
+              <p className="text-sm text-red-600 mb-4">
+                Questa operazione eliminerà permanentemente tutti i progressi, punteggi, badge e attività di tutti gli studenti.
+                Usa questa funzione solo per iniziare un nuovo anno accademico o per test.
+              </p>
+              {resetMessage && (
+                <div className={`mb-4 p-3 rounded-lg ${
+                  resetMessage.type === 'success' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                }`}>
+                  {resetMessage.text}
+                </div>
+              )}
+              <button
+                onClick={handleResetAllStatistics}
+                disabled={isResetting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isResetting ? (
+                  <>
+                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                    <span>Reset in corso...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>🗑️</span>
+                    <span>Reset Tutte le Statistiche</span>
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -588,7 +657,7 @@ const ITSLearningPlatform: React.FC = () => {
           />
         );
       case 'percorso':
-        return <PercorsoView setActiveModule={setActiveModule} />;
+        return <PercorsoView setActiveModule={setActiveModule} currentUser={currentUser} />;
       case 'sfide':
         return <PlaceholderView title="Sfide & Competizioni" icon="🏆" />;
       case 'tutor':

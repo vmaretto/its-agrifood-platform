@@ -7,6 +7,9 @@ import { saveModule } from '@/services/moduliStorage';
 import { saveQuizAnswer } from '@/services/teamsService';
 import { UserProfile } from '@/services/authService';
 import { VisualContentRenderer } from './visual/VisualContentRenderer';
+import { initModuleProgress, markSlideCompleted, saveQuizProgress, updateSlidePosition } from '@/services/progressService';
+import { logQuizCompleted } from '@/services/activitiesService';
+import { checkAndAwardBadges } from '@/services/badgesService';
 
 // ============================================
 // COMPONENTI HELPER
@@ -485,6 +488,7 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
   const [activeTab, setActiveTab] = useState('contenuto');
   const [showSpeechPanel, setShowSpeechPanel] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [progressInitialized, setProgressInitialized] = useState(false);
 
   // Stati per modal video
   const [showVideoModal, setShowVideoModal] = useState(false);
@@ -498,6 +502,36 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
 
   const slide = module.slides[currentSlide];
   const progress = ((currentSlide + 1) / module.slides.length) * 100;
+
+  // Inizializza il progresso quando il modulo viene aperto
+  useEffect(() => {
+    const initProgress = async () => {
+      if (currentUser?.id && !progressInitialized) {
+        await initModuleProgress(currentUser.id, module.id, module.titolo);
+        setProgressInitialized(true);
+      }
+    };
+    initProgress();
+  }, [currentUser?.id, module.id, module.titolo, progressInitialized]);
+
+  // Traccia il completamento della slide quando l'utente la visualizza
+  useEffect(() => {
+    const trackSlideView = async () => {
+      if (currentUser?.id && progressInitialized) {
+        // Aggiorna la posizione corrente
+        await updateSlidePosition(currentUser.id, module.id, currentSlide + 1, module.titolo);
+        // Segna la slide come completata
+        await markSlideCompleted(
+          currentUser.id,
+          module.id,
+          currentSlide + 1,
+          module.slides.length,
+          module.titolo
+        );
+      }
+    };
+    trackSlideView();
+  }, [currentSlide, currentUser?.id, module.id, module.titolo, module.slides.length, progressInitialized]);
 
   // Funzione per salvare il modulo su Supabase
   const saveModuleToDb = async (updatedModule: ModuleJSON) => {
@@ -780,6 +814,16 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
                     currentUser={currentUser}
                     moduleId={module.id}
                     slideId={slide.id}
+                    onAnswerSaved={async (isCorrect, points) => {
+                      if (currentUser?.id) {
+                        // Salva nel progresso del modulo
+                        await saveQuizProgress(currentUser.id, module.id, slide.id, points, isCorrect);
+                        // Log attività (logQuizCompleted gestisce sia corretti che errati)
+                        await logQuizCompleted(currentUser.id, module.id, module.titolo, slide.id, isCorrect, points);
+                        // Controlla badge
+                        await checkAndAwardBadges(currentUser.id);
+                      }
+                    }}
                   />
                 </div>
               )}
