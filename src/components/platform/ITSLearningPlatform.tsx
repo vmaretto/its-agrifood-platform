@@ -137,28 +137,16 @@ const AdminDashboard = () => {
         const teamsData = await getTeams();
         setTeams(teamsData);
 
-        // Carica lista studenti con progresso (usa tabella students per avere team_id)
-        const { data: studentsData } = await supabase
-          .from('students')
-          .select('id, first_name, last_name, email, team_id')
-          .order('first_name', { ascending: true });
-
-        // Carica anche i punti dalla leaderboard
+        // Carica lista studenti dalla leaderboard (include già team_name, team_color, team_id, points)
         const { data: leaderboardData } = await supabase
           .from('students_leaderboard')
-          .select('id, points');
+          .select('*')
+          .order('points', { ascending: false });
 
-        const pointsMap: Record<string, number> = {};
         if (leaderboardData) {
-          for (const lb of leaderboardData) {
-            pointsMap[lb.id] = lb.points || 0;
-          }
-        }
-
-        if (studentsData) {
           // Per ogni studente, calcola i moduli completati e il tempo totale
           const studentsWithProgress: StudentWithProgress[] = await Promise.all(
-            studentsData.map(async (s) => {
+            leaderboardData.map(async (s) => {
               const { data: studentProgressData } = await supabase
                 .from('user_progress')
                 .select('is_completed, time_spent_seconds')
@@ -173,25 +161,20 @@ const AdminDashboard = () => {
                 }
               }
 
-              // Trova il team
-              const team = teamsData.find(t => t.id === s.team_id);
-
               return {
                 id: s.id,
                 first_name: s.first_name,
                 last_name: s.last_name,
-                email: s.email,
-                points: pointsMap[s.id] || 0,
+                email: '', // La leaderboard non ha email, ma non è usato nella UI
+                points: s.points || 0,
                 team_id: s.team_id,
-                team_name: team?.name,
-                team_color: team?.color,
+                team_name: s.team_name,
+                team_color: s.team_color,
                 modules_completed: modulesCompleted,
                 total_time_seconds: totalTime
               };
             })
           );
-          // Ordina per punti decrescenti
-          studentsWithProgress.sort((a, b) => b.points - a.points);
           setStudents(studentsWithProgress);
         }
 
