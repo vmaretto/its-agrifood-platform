@@ -7,7 +7,7 @@ import { saveModule } from '@/services/moduliStorage';
 import { saveQuizAnswer } from '@/services/teamsService';
 import { UserProfile } from '@/services/authService';
 import { VisualContentRenderer } from './visual/VisualContentRenderer';
-import { initModuleProgress, markSlideCompleted, saveQuizProgress, updateSlidePosition } from '@/services/progressService';
+import { initModuleProgress, markSlideCompleted, saveQuizProgress, updateSlidePosition, getModuleProgress } from '@/services/progressService';
 import { logQuizCompleted } from '@/services/activitiesService';
 import { checkAndAwardBadges } from '@/services/badgesService';
 
@@ -517,6 +517,12 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
   useEffect(() => {
     const initProgress = async () => {
       if (currentUser?.id && !progressInitialized) {
+        // Carica lo stato del modulo
+        const existingProgress = await getModuleProgress(currentUser.id, module.id);
+        if (existingProgress?.is_completed) {
+          // Se il modulo era già completato, setta lo stato
+          setModuleCompleted(true);
+        }
         await initModuleProgress(currentUser.id, module.id, module.titolo);
         setProgressInitialized(true);
       }

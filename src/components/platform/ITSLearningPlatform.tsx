@@ -31,6 +31,11 @@ const AdminDashboard = () => {
   const [modules, setModules] = React.useState<{ id: string; titolo: string; completedBy: number }[]>([]);
   const [totalStudents, setTotalStudents] = React.useState(0);
 
+  // Stato per il modal dettaglio squadra
+  const [selectedTeam, setSelectedTeam] = React.useState<import('@/services/teamsService').Team | null>(null);
+  const [teamMembers, setTeamMembers] = React.useState<import('@/services/teamsService').Student[]>([]);
+  const [isLoadingMembers, setIsLoadingMembers] = React.useState(false);
+
   // Carica tutti i dati da Supabase
   React.useEffect(() => {
     const loadData = async () => {
@@ -113,6 +118,21 @@ const AdminDashboard = () => {
     };
     loadData();
   }, []);
+
+  // Carica membri della squadra selezionata
+  const handleTeamClick = async (team: import('@/services/teamsService').Team) => {
+    setSelectedTeam(team);
+    setIsLoadingMembers(true);
+    try {
+      const { getStudentsByTeam } = await import('@/services/teamsService');
+      const members = await getStudentsByTeam(team.id);
+      setTeamMembers(members);
+    } catch (err) {
+      console.error('Error loading team members:', err);
+      setTeamMembers([]);
+    }
+    setIsLoadingMembers(false);
+  };
 
   // Helper per formattare tempo relativo
   const formatTime = (dateString: string) => {
@@ -222,12 +242,17 @@ const AdminDashboard = () => {
         {/* Classifica Squadre */}
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <h3 className="font-semibold text-gray-800 mb-4">🏆 Classifica Squadre</h3>
+          <p className="text-xs text-gray-500 mb-3">Clicca su una squadra per vedere i membri</p>
           <div className="space-y-3">
             {teams.length === 0 ? (
               <div className="text-center py-4 text-gray-500">Nessuna squadra configurata</div>
             ) : (
               teams.map((team, idx) => (
-                <div key={team.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl">
+                <div
+                  key={team.id}
+                  className="flex items-center gap-4 p-3 bg-gray-50 rounded-xl cursor-pointer hover:bg-gray-100 transition-colors"
+                  onClick={() => handleTeamClick(team)}
+                >
                   <div
                     className={`w-8 h-8 rounded-full flex items-center justify-center text-white font-bold`}
                     style={{ backgroundColor: team.color || (idx === 0 ? '#f59e0b' : idx === 1 ? '#9ca3af' : idx === 2 ? '#92400e' : '#d1d5db') }}
@@ -239,7 +264,7 @@ const AdminDashboard = () => {
                     <div className="text-xs text-gray-500">{team.member_count || 0} membri</div>
                   </div>
                   <div className="text-right">
-                    <div className="font-bold text-gray-800">{team.total_points || 0} pt</div>
+                    <div className="font-bold text-gray-800">{team.points || 0} pt</div>
                   </div>
                 </div>
               ))
@@ -274,6 +299,70 @@ const AdminDashboard = () => {
           )}
         </div>
       </div>
+
+      {/* Modal Dettaglio Squadra */}
+      {selectedTeam && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setSelectedTeam(null)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[80vh] overflow-hidden" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="p-6 border-b" style={{ backgroundColor: selectedTeam.color || '#10b981' }}>
+                <div className="flex items-center justify-between">
+                  <div className="text-white">
+                    <h2 className="text-xl font-bold">{selectedTeam.name}</h2>
+                    <p className="text-sm opacity-90">{selectedTeam.member_count || 0} membri - {selectedTeam.points || 0} pt totali</p>
+                  </div>
+                  <button
+                    onClick={() => setSelectedTeam(null)}
+                    className="text-white/80 hover:text-white text-2xl"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+
+              {/* Contenuto */}
+              <div className="p-6 overflow-y-auto max-h-[60vh]">
+                <h3 className="font-semibold text-gray-800 mb-4">Membri della squadra</h3>
+                {isLoadingMembers ? (
+                  <div className="text-center py-4 text-gray-500">Caricamento...</div>
+                ) : teamMembers.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">Nessun membro in questa squadra</div>
+                ) : (
+                  <div className="space-y-3">
+                    {teamMembers.map((member, idx) => (
+                      <div key={member.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                        <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                          {idx + 1}
+                        </div>
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-800">
+                            {member.first_name} {member.last_name}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-bold text-indigo-600">{member.points || 0} pt</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="border-t p-4 bg-gray-50">
+                <button
+                  onClick={() => setSelectedTeam(null)}
+                  className="w-full px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Chiudi
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 };
@@ -992,6 +1081,18 @@ const ITSLearningPlatform: React.FC = () => {
     setCurrentView('home');
   };
 
+  // Handler per ricaricare i dati dell'utente (punti, ecc.)
+  const refreshCurrentUser = async () => {
+    try {
+      const user = await getCurrentUser();
+      if (user) {
+        setCurrentUser(user);
+      }
+    } catch (err) {
+      console.error('Error refreshing user:', err);
+    }
+  };
+
   // Mostra loading durante il check auth iniziale
   if (isAuthLoading) {
     return (
@@ -1091,10 +1192,15 @@ const ITSLearningPlatform: React.FC = () => {
         />;
 
       default:
+        // Per admin/docenti, mostra direttamente la dashboard admin
+        if (isAdmin) {
+          return <AdminDashboard />;
+        }
         return (
           <HomeDashboard
             setCurrentView={setCurrentView}
             setActiveModule={setActiveModule}
+            currentUser={currentUser}
           />
         );
     }

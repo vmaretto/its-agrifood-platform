@@ -120,6 +120,9 @@ export async function markSlideCompleted(
   const progress = await getModuleProgress(userId, moduleId);
   if (!progress) return false;
 
+  // Se il modulo era già completato, non ritornare true per il modal
+  const wasAlreadyCompleted = progress.is_completed;
+
   const completedSlides = progress.completed_slides || [];
   if (!completedSlides.includes(slideNumber)) {
     completedSlides.push(slideNumber);
@@ -149,8 +152,8 @@ export async function markSlideCompleted(
     await logSlideViewed(userId, moduleId, moduleName, slideNumber);
   }
 
-  // If module completed, log and check badges
-  if (isCompleted && !progress.is_completed) {
+  // If module completed for the first time, log and check badges
+  if (isCompleted && !wasAlreadyCompleted) {
     await logModuleCompleted(userId, moduleId, moduleName, 50); // 50 points for completing module
 
     // Add bonus points for module completion
@@ -167,7 +170,8 @@ export async function markSlideCompleted(
     await checkAndAwardBadges(userId);
   }
 
-  return isCompleted;
+  // Ritorna true solo se il modulo è stato completato per la PRIMA volta
+  return isCompleted && !wasAlreadyCompleted;
 }
 
 export async function saveQuizProgress(

@@ -85,76 +85,83 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({
   // Progresso corso
   const progressoCorso = progressSummary?.overall_progress || 0;
 
+  // Verifica se l'utente è un admin/docente
+  const isAdmin = currentUser?.role === 'admin' || currentUser?.role === 'teacher';
+
   return (
     <div className="p-8">
       {/* Welcome Header */}
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-800">Benvenuto, {userName}!</h1>
-        <p className="text-gray-500">Continua il tuo percorso di apprendimento</p>
+        <p className="text-gray-500">
+          {isAdmin ? 'Gestisci il tuo corso' : 'Continua il tuo percorso di apprendimento'}
+        </p>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-6 mb-8">
-        {/* Punti Personali */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-gray-500">I tuoi punti</span>
-            <span className="text-2xl font-bold text-emerald-600">{userPoints}</span>
-          </div>
-          <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-              style={{ width: `${Math.min((userPoints / 100) * 100, 100)}%` }}
-            ></div>
-          </div>
-          <p className="mt-2 text-xs text-gray-500">
-            {userPoints < 50 ? 'Continua a fare quiz per guadagnare punti!' : 'Ottimo lavoro!'}
-          </p>
-        </div>
-
-        {/* Squadra */}
-        <div className={`bg-gradient-to-br ${userTeam ? 'from-emerald-500 to-teal-600' : 'from-gray-400 to-gray-500'} rounded-2xl p-6 text-white`}>
-          <div className="text-sm opacity-80 mb-1">La tua squadra</div>
-          <div className="text-xl font-bold mb-2">{squadra.name}</div>
-          <div className="flex items-center gap-4">
-            <div>
-              <div className="text-3xl font-bold">{squadra.points || 0}</div>
-              <div className="text-xs opacity-80">punti squadra</div>
+      {/* Stats Cards - Solo per studenti */}
+      {!isAdmin && (
+        <div className="grid grid-cols-3 gap-6 mb-8">
+          {/* Punti Personali */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-gray-500">I tuoi punti</span>
+              <span className="text-2xl font-bold text-emerald-600">{userPoints}</span>
             </div>
-            <div className="text-4xl">
-              {teamPosition === 1 ? '🥇' : teamPosition === 2 ? '🥈' : teamPosition === 3 ? '🥉' : '🏅'}
+            <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                style={{ width: `${Math.min((userPoints / 100) * 100, 100)}%` }}
+              ></div>
             </div>
+            <p className="mt-2 text-xs text-gray-500">
+              {userPoints < 50 ? 'Continua a fare quiz per guadagnare punti!' : 'Ottimo lavoro!'}
+            </p>
           </div>
-          {!userTeam && (
-            <p className="mt-2 text-xs opacity-80">Il docente ti assegnera a una squadra</p>
-          )}
-        </div>
 
-        {/* Progresso Corso */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
-          <div className="text-gray-500 mb-2">Progresso Corso</div>
-          <div className="flex items-center gap-4 mb-3">
-            <div className="text-3xl font-bold text-indigo-600">{progressoCorso}%</div>
-            <div className="flex-1">
-              <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-indigo-500 rounded-full transition-all duration-500"
-                  style={{ width: `${progressoCorso}%` }}
-                ></div>
+          {/* Squadra */}
+          <div className={`bg-gradient-to-br ${userTeam ? 'from-emerald-500 to-teal-600' : 'from-gray-400 to-gray-500'} rounded-2xl p-6 text-white`}>
+            <div className="text-sm opacity-80 mb-1">La tua squadra</div>
+            <div className="text-xl font-bold mb-2">{squadra.name}</div>
+            <div className="flex items-center gap-4">
+              <div>
+                <div className="text-3xl font-bold">{squadra.points || 0}</div>
+                <div className="text-xs opacity-80">punti squadra</div>
+              </div>
+              <div className="text-4xl">
+                {teamPosition === 1 ? '🥇' : teamPosition === 2 ? '🥈' : teamPosition === 3 ? '🥉' : '🏅'}
               </div>
             </div>
-          </div>
-          <div className="text-sm text-gray-500">
-            {progressSummary ? (
-              <>
-                {progressSummary.completed_modules}/{progressSummary.total_modules} moduli completati
-              </>
-            ) : (
-              'Caricamento...'
+            {!userTeam && (
+              <p className="mt-2 text-xs opacity-80">Il docente ti assegnera a una squadra</p>
             )}
           </div>
+
+          {/* Progresso Corso */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm">
+            <div className="text-gray-500 mb-2">Progresso Corso</div>
+            <div className="flex items-center gap-4 mb-3">
+              <div className="text-3xl font-bold text-indigo-600">{progressoCorso}%</div>
+              <div className="flex-1">
+                <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+                    style={{ width: `${progressoCorso}%` }}
+                  ></div>
+                </div>
+              </div>
+            </div>
+            <div className="text-sm text-gray-500">
+              {progressSummary ? (
+                <>
+                  {progressSummary.completed_modules}/{progressSummary.total_modules} moduli completati
+                </>
+              ) : (
+                'Caricamento...'
+              )}
+            </div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Second Row */}
       <div className="grid grid-cols-2 gap-6 mb-8">
