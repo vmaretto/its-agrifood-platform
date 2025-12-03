@@ -606,13 +606,17 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
           // Aggiorna la posizione corrente
           await updateSlidePosition(currentUser!.id, module.id, slideNumber, module.titolo);
 
+          // Calcola il tempo trascorso dall'inizio del modulo
+          const elapsedSeconds = Math.round((Date.now() - moduleStartTime) / 1000);
+
           // Segna la slide come completata su DB e verifica se il modulo è completato
           const justCompleted = await markSlideCompleted(
             currentUser!.id,
             module.id,
             slideNumber,
             totalSlides,
-            module.titolo
+            module.titolo,
+            elapsedSeconds
           );
 
           console.log('[ModuloDinamico] markSlideCompleted returned:', justCompleted);
@@ -620,6 +624,10 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
           // Se il modulo è stato appena completato per la prima volta, mostra il modal
           if (justCompleted) {
             console.log('[ModuloDinamico] Module completed! Showing modal.');
+            // Imposta il tempo e i punti per il modal
+            setTimeSpentSeconds(elapsedSeconds);
+            const pointsEarned = calculatePointsFromTime(elapsedSeconds);
+            setEarnedPoints(pointsEarned);
             setModuleCompleted(true);
             setShowCompletionModal(true);
           }
@@ -629,7 +637,7 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
       }
     };
     trackSlideView();
-  }, [currentSlide, currentUser?.id, currentUser?.role, module.id, module.titolo, module.slides.length, progressInitialized]);
+  }, [currentSlide, currentUser?.id, currentUser?.role, module.id, module.titolo, module.slides.length, progressInitialized, moduleStartTime]);
 
   // Funzione per salvare il modulo su Supabase
   const saveModuleToDb = async (updatedModule: ModuleJSON) => {

@@ -133,12 +133,22 @@ export async function updateSlidePosition(
   }
 }
 
+// Funzione helper per calcolare i punti in base al tempo trascorso
+const calculatePointsFromTime = (seconds: number): number => {
+  const minutes = seconds / 60;
+  if (minutes < 1) return 1;      // < 1 minuto = 1 punto
+  if (minutes < 5) return 5;      // 1-5 minuti = 5 punti
+  if (minutes < 10) return 10;    // 5-10 minuti = 10 punti
+  return 20;                       // > 10 minuti = 20 punti
+};
+
 export async function markSlideCompleted(
   userId: string,
   moduleId: string,
   slideNumber: number,
   totalSlides: number,
-  moduleName: string
+  moduleName: string,
+  timeSpentSeconds?: number
 ): Promise<boolean> {
   console.log('[markSlideCompleted] Called with:', { userId, moduleId, slideNumber, totalSlides, moduleName });
   const now = new Date().toISOString();
@@ -213,6 +223,9 @@ export async function markSlideCompleted(
   if (isNowCompleted) {
     updateData.is_completed = true;
     updateData.completed_at = now;
+    if (timeSpentSeconds !== undefined) {
+      updateData.time_spent_seconds = timeSpentSeconds;
+    }
   }
 
   const { error: updateError } = await supabase
@@ -236,14 +249,19 @@ export async function markSlideCompleted(
   // Step 5: Se modulo completato per la prima volta, log e badge
   if (isNowCompleted) {
     console.log('[markSlideCompleted] Module completed for the first time!');
-    await logModuleCompleted(userId, moduleId, moduleName, 50);
+
+    // Calcola punti in base al tempo trascorso
+    const points = timeSpentSeconds !== undefined ? calculatePointsFromTime(timeSpentSeconds) : 20;
+    console.log('[markSlideCompleted] Points awarded:', points, 'for time:', timeSpentSeconds, 'seconds');
+
+    await logModuleCompleted(userId, moduleId, moduleName, points);
 
     // Add bonus points for module completion
     await supabase
       .from('bonus_points')
       .insert([{
         student_id: userId,
-        points: 50,
+        points: points,
         reason: `Modulo completato: ${moduleName}`,
         assigned_by: 'system'
       }]);
