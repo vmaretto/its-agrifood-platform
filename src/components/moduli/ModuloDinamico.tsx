@@ -141,6 +141,14 @@ const MiniQuiz = ({ quiz, currentUser, moduleId, slideId, onAnswerSaved }: MiniQ
   const [alreadyAnswered, setAlreadyAnswered] = useState(false);
   const [pointsEarned, setPointsEarned] = useState<number | null>(null);
 
+  // Reset stato quando cambia la slide
+  useEffect(() => {
+    setSelectedAnswer(null);
+    setShowResult(false);
+    setAlreadyAnswered(false);
+    setPointsEarned(null);
+  }, [slideId]);
+
   const handleAnswer = async (index: number) => {
     setSelectedAnswer(index);
     setShowResult(true);
