@@ -32,18 +32,22 @@ export interface UserProgressSummary {
 // ============================================
 
 export async function getModuleProgress(userId: string, moduleId: string): Promise<ModuleProgress | null> {
+  console.log('[getModuleProgress] Fetching for:', { userId, moduleId });
+
   const { data, error } = await supabase
     .from('user_progress')
     .select('*')
     .eq('user_id', userId)
     .eq('module_id', moduleId)
-    .single();
+    .maybeSingle(); // Usa maybeSingle invece di single per evitare errori 406
 
-  if (error && error.code !== 'PGRST116') { // PGRST116 = no rows returned
-    console.error('Error fetching module progress:', error);
+  if (error) {
+    console.error('[getModuleProgress] Error:', error);
+    // Se è un errore di RLS o altro, ritorna null
     return null;
   }
 
+  console.log('[getModuleProgress] Result:', data);
   return data;
 }
 
@@ -52,9 +56,12 @@ export async function initModuleProgress(
   moduleId: string,
   moduleName: string
 ): Promise<ModuleProgress | null> {
+  console.log('[initModuleProgress] Starting for:', { userId, moduleId, moduleName });
+
   // Check if progress already exists
   const existing = await getModuleProgress(userId, moduleId);
   if (existing) {
+    console.log('[initModuleProgress] Progress exists, updating last_accessed_at');
     // Update last accessed
     await supabase
       .from('user_progress')
@@ -64,27 +71,43 @@ export async function initModuleProgress(
     return existing;
   }
 
-  // Create new progress
+  console.log('[initModuleProgress] Creating new progress record');
+
+  // Create new progress usando upsert per evitare conflitti
   const { data, error } = await supabase
     .from('user_progress')
-    .insert([{
+    .upsert({
       user_id: userId,
       module_id: moduleId,
       current_slide: 1,
       completed_slides: [],
       quiz_scores: {},
-      is_completed: false
-    }])
+      is_completed: false,
+      started_at: new Date().toISOString(),
+      last_accessed_at: new Date().toISOString()
+    }, {
+      onConflict: 'user_id,module_id'
+    })
     .select()
-    .single();
+    .maybeSingle();
 
   if (error) {
-    console.error('Error creating module progress:', error);
+    console.error('[initModuleProgress] Error:', error);
+    // Prova a recuperare il record esistente se c'è stato un errore
+    const retryFetch = await getModuleProgress(userId, moduleId);
+    if (retryFetch) {
+      console.log('[initModuleProgress] Retrieved existing record after error');
+      return retryFetch;
+    }
     return null;
   }
 
-  // Log activity
-  await logModuleStarted(userId, moduleId, moduleName);
+  console.log('[initModuleProgress] Created:', data);
+
+  // Log activity solo se è stato creato un nuovo record
+  if (data) {
+    await logModuleStarted(userId, moduleId, moduleName);
+  }
 
   return data;
 }
@@ -119,12 +142,26 @@ export async function markSlideCompleted(
   console.log('[markSlideCompleted] Called with:', { userId, moduleId, slideNumber, totalSlides, moduleName });
 
   // Get current progress
-  const progress = await getModuleProgress(userId, moduleId);
+  let progress = await getModuleProgress(userId, moduleId);
   console.log('[markSlideCompleted] Current progress:', progress);
 
+  // Se non esiste il progress, crealo ora
   if (!progress) {
-    console.log('[markSlideCompleted] No progress found, returning false');
-    return false;
+    console.log('[markSlideCompleted] No progress found, creating it now...');
+    progress = await initModuleProgress(userId, moduleId, moduleName);
+
+    if (!progress) {
+      console.log('[markSlideCompleted] Failed to create progress, using default values');
+      // Crea un oggetto di default per continuare
+      progress = {
+        user_id: userId,
+        module_id: moduleId,
+        current_slide: 1,
+        completed_slides: [],
+        quiz_scores: {},
+        is_completed: false
+      };
+    }
   }
 
   // Se il modulo era già completato, non ritornare true per il modal
@@ -145,21 +182,30 @@ export async function markSlideCompleted(
     willReturnTrue: isCompleted && !wasAlreadyCompleted
   });
 
+  // Usa upsert invece di update per creare il record se non esiste
   const { error } = await supabase
     .from('user_progress')
-    .update({
+    .upsert({
+      user_id: userId,
+      module_id: moduleId,
+      current_slide: slideNumber,
       completed_slides: completedSlides,
+      quiz_scores: progress.quiz_scores || {},
       is_completed: isCompleted,
       completed_at: isCompleted ? new Date().toISOString() : null,
       last_accessed_at: new Date().toISOString()
-    })
-    .eq('user_id', userId)
-    .eq('module_id', moduleId);
+    }, {
+      onConflict: 'user_id,module_id'
+    });
 
   if (error) {
-    console.error('Error marking slide completed:', error);
-    return false;
+    console.error('[markSlideCompleted] Error upserting progress:', error);
+    // Prova comunque a ritornare true se tutte le slide sono state viste
+    // (il tracking locale potrebbe essere corretto anche se il salvataggio fallisce)
+    return isCompleted && !wasAlreadyCompleted;
   }
+
+  console.log('[markSlideCompleted] Progress saved successfully');
 
   // Log activity for first time viewing slide
   if (!progress.completed_slides?.includes(slideNumber)) {

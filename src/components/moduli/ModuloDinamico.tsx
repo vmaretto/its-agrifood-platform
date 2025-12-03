@@ -500,6 +500,11 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
   const [showCompletionModal, setShowCompletionModal] = useState(false);
   const [moduleCompleted, setModuleCompleted] = useState(false);
 
+  // Tracking locale delle slide visualizzate (fallback se Supabase non funziona)
+  // Uso useRef per evitare re-render infiniti
+  const localViewedSlidesRef = React.useRef<Set<number>>(new Set());
+  const hasShownCompletionRef = React.useRef(false);
+
   // Stati per modal video
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [editingVideo, setEditingVideo] = useState<{ video: VideoItem | null; index: number } | null>(null);
@@ -556,49 +561,66 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
   // Traccia il completamento della slide quando l'utente la visualizza
   useEffect(() => {
     const trackSlideView = async () => {
-      // Verifica condizioni necessarie
-      const canTrack = currentUser?.id && currentUser?.role === 'student' && progressInitialized;
+      // Verifica condizioni necessarie - solo per studenti
+      const isStudent = currentUser?.id && currentUser?.role === 'student';
+      const slideNumber = currentSlide + 1;
+      const totalSlides = module.slides.length;
 
       // Debug log
       console.log('[ModuloDinamico] trackSlideView called', {
         userId: currentUser?.id,
         userRole: currentUser?.role,
-        canTrack,
+        isStudent,
         progressInitialized,
-        currentSlide: currentSlide + 1,
-        totalSlides: module.slides.length,
-        moduleCompleted
+        currentSlide: slideNumber,
+        totalSlides,
+        hasShownCompletion: hasShownCompletionRef.current,
+        localViewedSlides: Array.from(localViewedSlidesRef.current)
       });
 
       // Solo per studenti, non per admin/docenti
-      if (canTrack) {
-        try {
-          // Aggiorna la posizione corrente
-          await updateSlidePosition(currentUser!.id, module.id, currentSlide + 1, module.titolo);
-          // Segna la slide come completata
-          const isCompleted = await markSlideCompleted(
-            currentUser!.id,
-            module.id,
-            currentSlide + 1,
-            module.slides.length,
-            module.titolo
-          );
+      if (isStudent) {
+        // SEMPRE: Aggiorna il tracking locale usando la ref
+        localViewedSlidesRef.current.add(slideNumber);
+        const localViewedCount = localViewedSlidesRef.current.size;
+        const localIsCompleted = localViewedCount >= totalSlides;
 
-          console.log('[ModuloDinamico] markSlideCompleted returned:', isCompleted);
+        console.log('[ModuloDinamico] Local tracking:', {
+          viewedCount: localViewedCount,
+          totalSlides,
+          localIsCompleted,
+          hasShownCompletion: hasShownCompletionRef.current,
+          viewedSlides: Array.from(localViewedSlidesRef.current)
+        });
 
-          // Se il modulo è stato appena completato, mostra il modal
-          if (isCompleted) {
-            console.log('[ModuloDinamico] Showing completion modal!');
-            setModuleCompleted(true);
-            setShowCompletionModal(true);
+        // Se completato localmente e non già mostrato, mostra il modal
+        if (localIsCompleted && !hasShownCompletionRef.current) {
+          console.log('[ModuloDinamico] Module completed locally! Showing modal.');
+          hasShownCompletionRef.current = true;
+          setModuleCompleted(true);
+          setShowCompletionModal(true);
+        }
+
+        // Prova anche a salvare su Supabase (ma il modal è già gestito localmente)
+        if (progressInitialized) {
+          try {
+            // Aggiorna la posizione corrente
+            await updateSlidePosition(currentUser!.id, module.id, slideNumber, module.titolo);
+            // Segna la slide come completata su DB
+            await markSlideCompleted(
+              currentUser!.id,
+              module.id,
+              slideNumber,
+              totalSlides,
+              module.titolo
+            );
+          } catch (err) {
+            console.error('[ModuloDinamico] Error tracking slide on DB (using local fallback):', err);
           }
-        } catch (err) {
-          console.error('[ModuloDinamico] Error tracking slide:', err);
         }
       }
     };
     trackSlideView();
-    // Rimuovo moduleCompleted dalle dipendenze per evitare loop
   }, [currentSlide, currentUser?.id, currentUser?.role, module.id, module.titolo, module.slides.length, progressInitialized]);
 
   // Funzione per salvare il modulo su Supabase
