@@ -7,12 +7,14 @@ import HomeDashboard from './HomeDashboard';
 import PercorsoView from './PercorsoView';
 import PlaceholderView from './PlaceholderView';
 import ModuloDinamico from '../moduli/ModuloDinamico';
+import ModuloHackathon from '../moduli/ModuloHackathon';
 import AdminNuovoModulo from './AdminNuovoModulo';
 import AdminSquadre from './AdminSquadre';
 import AuthPage from '../auth/AuthPage';
 import { getModules, getModuleSync, deleteModule, getModulesSync } from '@/services/moduliStorage';
 import { ModuleJSON } from '@/types/module';
 import { getCurrentUser, signOut, UserProfile } from '@/services/authService';
+import { hackathonWinetechModule } from '@/data/hackathonWinetech';
 
 // ============================================
 // COMPONENTI ADMIN
@@ -1537,6 +1539,19 @@ const ITSLearningPlatform: React.FC = () => {
 
     const dynamicModule = getModuleSync(activeModule);
     if (dynamicModule) {
+      // Se il modulo è di tipo hackathon, usa ModuloHackathon
+      if (dynamicModule.tipo === 'hackathon') {
+        return (
+          <ModuloHackathon
+            module={dynamicModule}
+            onBack={() => setActiveModule(null)}
+            isAdmin={isAdmin}
+            currentUser={currentUser}
+          />
+        );
+      }
+
+      // Per tutti gli altri moduli, usa ModuloDinamico
       return (
         <ModuloDinamico
           module={dynamicModule}
@@ -1577,7 +1592,14 @@ const ITSLearningPlatform: React.FC = () => {
       case 'tutor':
         return <PlaceholderView title="AI Tutor" icon="🤖" />;
       case 'hackathon':
-        return <PlaceholderView title="Hackathon Space" icon="💡" />;
+        return (
+          <ModuloHackathon
+            module={hackathonWinetechModule}
+            onBack={() => setCurrentView('home')}
+            isAdmin={isAdmin}
+            currentUser={currentUser}
+          />
+        );
       
       // Viste Admin
       case 'admin-dashboard':
@@ -1589,7 +1611,14 @@ const ITSLearningPlatform: React.FC = () => {
       case 'admin-badge':
         return <AdminBadge />;
       case 'admin-hackathon':
-        return <AdminHackathon />;
+        return (
+          <ModuloHackathon
+            module={hackathonWinetechModule}
+            onBack={() => setCurrentView('admin-dashboard')}
+            isAdmin={isAdmin}
+            currentUser={currentUser}
+          />
+        );
       case 'admin-settings':
         return <AdminSettings />;
       case 'admin-nuovo-modulo':
