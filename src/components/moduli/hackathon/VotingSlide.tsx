@@ -66,9 +66,11 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [finalizeResults, setFinalizeResults] = useState<FinalizeResult[] | null>(null);
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
+  const [selectedJuryMember, setSelectedJuryMember] = useState<JuryMember | null>(null);
+  const [juryVotes, setJuryVotes] = useState<{ [juryId: string]: HackathonVote[] }>({});
 
   const isTeacher = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
-  const voterType = isTeacher ? 'teacher' : 'student';
+  const voterType = isTeacher ? (selectedJuryMember ? 'jury' : 'teacher') : 'student';
 
   // Carica dati iniziali
   useEffect(() => {
@@ -101,6 +103,16 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
         const votes = await getVoterVotes(hackathonId, currentUser.id);
         setExistingVotes(votes);
       }
+
+      // Se è docente, carica anche i voti di tutti i giurati
+      if (isTeacher && juryData.length > 0) {
+        const juryVotesMap: { [juryId: string]: HackathonVote[] } = {};
+        for (const jury of juryData) {
+          const jVotes = await getVoterVotes(hackathonId, jury.id);
+          juryVotesMap[jury.id] = jVotes;
+        }
+        setJuryVotes(juryVotesMap);
+      }
     };
 
     loadData();
@@ -108,8 +120,13 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
 
   // Quando si seleziona una squadra, carica i voti esistenti
   useEffect(() => {
-    if (selectedTeam && existingVotes.length > 0) {
-      const teamExistingVotes = existingVotes.filter(v => v.team_id === selectedTeam.id);
+    // Se è selezionato un giurato, usa i suoi voti
+    const votesToUse = selectedJuryMember
+      ? (juryVotes[selectedJuryMember.id] || [])
+      : existingVotes;
+
+    if (selectedTeam && votesToUse.length > 0) {
+      const teamExistingVotes = votesToUse.filter(v => v.team_id === selectedTeam.id);
       const votes: TeamVotes = {};
       teamExistingVotes.forEach(v => {
         votes[v.criterion_id] = v.score;
@@ -118,7 +135,7 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
     } else {
       setTeamVotes({});
     }
-  }, [selectedTeam, existingVotes]);
+  }, [selectedTeam, existingVotes, selectedJuryMember, juryVotes]);
 
   // Gestisce il click sulle stelle
   const handleStarClick = (criterionId: string, score: number) => {
@@ -147,10 +164,13 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
       score
     }));
 
+    // Usa l'ID del giurato se selezionato, altrimenti l'ID dell'utente corrente
+    const voterId = selectedJuryMember ? selectedJuryMember.id : currentUser.id;
+
     const success = await submitTeamVotes(
       hackathonId,
       selectedTeam.id,
-      currentUser.id,
+      voterId,
       voterType,
       votes
     );
@@ -167,10 +187,16 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
       setVotesSummary(summary);
 
       // Ricarica voti esistenti
-      const allVotes = await getVoterVotes(hackathonId, currentUser.id);
-      setExistingVotes(allVotes);
-
-      alert('Voti salvati con successo!');
+      if (selectedJuryMember) {
+        // Ricarica voti del giurato
+        const jVotes = await getVoterVotes(hackathonId, selectedJuryMember.id);
+        setJuryVotes(prev => ({ ...prev, [selectedJuryMember.id]: jVotes }));
+        alert(`Voti salvati per ${selectedJuryMember.name}!`);
+      } else {
+        const allVotes = await getVoterVotes(hackathonId, currentUser.id);
+        setExistingVotes(allVotes);
+        alert('Voti salvati con successo!');
+      }
       setSelectedTeam(null);
     } else {
       alert('Errore nel salvataggio dei voti');
@@ -293,6 +319,53 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
             <p className="text-lg text-gray-600">{String(vc.introParagraph)}</p>
           )}
 
+          {/* Selettore votante per docenti (se stesso o giurato) */}
+          {isTeacher && juryMembers.length > 0 && (
+            <div className="bg-purple-50 border border-purple-200 rounded-xl p-4">
+              <label className="block text-sm font-medium text-purple-800 mb-3">
+                👔 Stai votando come:
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setSelectedJuryMember(null)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    !selectedJuryMember
+                      ? 'bg-purple-600 text-white shadow-lg'
+                      : 'bg-white text-purple-700 border border-purple-300 hover:bg-purple-100'
+                  }`}
+                >
+                  🎓 Docente (tu)
+                </button>
+                {juryMembers.map(jury => {
+                  const juryHasVotes = (juryVotes[jury.id] || []).length > 0;
+                  return (
+                    <button
+                      key={jury.id}
+                      onClick={() => setSelectedJuryMember(jury)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                        selectedJuryMember?.id === jury.id
+                          ? 'bg-purple-600 text-white shadow-lg'
+                          : 'bg-white text-purple-700 border border-purple-300 hover:bg-purple-100'
+                      }`}
+                    >
+                      {jury.icon} {jury.name}
+                      {juryHasVotes && (
+                        <span className="text-xs bg-green-500 text-white px-1.5 py-0.5 rounded-full">
+                          ✓
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {selectedJuryMember && (
+                <p className="text-sm text-purple-600 mt-2">
+                  Stai votando per conto di <strong>{selectedJuryMember.name}</strong> ({selectedJuryMember.role})
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Messaggio per studenti che hanno già votato */}
           {!isTeacher && hasVoted && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
@@ -314,11 +387,19 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
             <>
               <div>
                 <h3 className="text-lg font-bold text-gray-800 mb-3">
-                  {isTeacher ? 'Seleziona la squadra da votare' : 'Vota per una squadra (non la tua)'}
+                  {isTeacher
+                    ? selectedJuryMember
+                      ? `Vota per conto di ${selectedJuryMember.name}`
+                      : 'Seleziona la squadra da votare'
+                    : 'Vota per una squadra (non la tua)'}
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   {votableTeams.map(team => {
-                    const hasExistingVotes = existingVotes.some(v => v.team_id === team.id);
+                    // Verifica voti esistenti in base al votante selezionato
+                    const votesToCheck = selectedJuryMember
+                      ? (juryVotes[selectedJuryMember.id] || [])
+                      : existingVotes;
+                    const hasExistingVotes = votesToCheck.some(v => v.team_id === team.id);
                     return (
                       <button
                         key={team.id}
@@ -365,9 +446,16 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
                     <div>
                       <h3 className="text-xl font-bold text-gray-800">{selectedTeam.name}</h3>
                       <p className="text-sm text-gray-500">
-                        Clicca sulle stelle per assegnare il punteggio
+                        {selectedJuryMember
+                          ? `Votazione di ${selectedJuryMember.name}`
+                          : 'Clicca sulle stelle per assegnare il punteggio'}
                       </p>
                     </div>
+                    {selectedJuryMember && (
+                      <div className="ml-auto px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-sm font-medium">
+                        {selectedJuryMember.icon} {selectedJuryMember.name}
+                      </div>
+                    )}
                   </div>
 
                   {/* Criteri con stelle */}
