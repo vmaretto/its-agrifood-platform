@@ -11,10 +11,13 @@ import {
   getJuryMembers,
   addJuryMember,
   removeJuryMember,
+  isHackathonFinalized,
+  finalizeHackathon,
   POINTS_PER_STAR,
   HackathonVote,
   JuryMember,
-  TeamVotesSummary
+  TeamVotesSummary,
+  FinalizeResult
 } from '@/services/hackathonVotingService';
 import { UserProfile } from '@/services/authService';
 
@@ -59,6 +62,10 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
   const [newJuryName, setNewJuryName] = useState('');
   const [newJuryRole, setNewJuryRole] = useState('');
   const [activeTab, setActiveTab] = useState<'vote' | 'results' | 'jury'>('vote');
+  const [isFinalized, setIsFinalized] = useState(false);
+  const [isFinalizing, setIsFinalizing] = useState(false);
+  const [finalizeResults, setFinalizeResults] = useState<FinalizeResult[] | null>(null);
+  const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
 
   const isTeacher = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
   const voterType = isTeacher ? 'teacher' : 'student';
@@ -77,6 +84,10 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
       // Carica riepilogo voti
       const summary = await getVotesSummary(hackathonId);
       setVotesSummary(summary);
+
+      // Controlla se hackathon è già finalizzato
+      const finalized = await isHackathonFinalized(hackathonId);
+      setIsFinalized(finalized);
 
       // Se è uno studente, controlla se ha già votato
       if (currentUser && !isTeacher) {
@@ -196,6 +207,25 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
         setJuryMembers(prev => prev.filter(j => j.id !== juryId));
       }
     }
+  };
+
+  // Finalizza hackathon e assegna punti
+  const handleFinalizeHackathon = async () => {
+    if (!isTeacher || isFinalized) return;
+
+    setIsFinalizing(true);
+    const hackathonName = slide.title || 'Hackathon';
+    const result = await finalizeHackathon(hackathonId, hackathonName);
+
+    if (result.success) {
+      setIsFinalized(true);
+      setFinalizeResults(result.results);
+      setShowFinalizeConfirm(false);
+    } else {
+      alert('Errore nella finalizzazione. L\'hackathon potrebbe essere già stato finalizzato.');
+    }
+
+    setIsFinalizing(false);
   };
 
   // Calcola punti totali per la squadra selezionata
@@ -407,7 +437,16 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
       {/* TAB: RISULTATI */}
       {activeTab === 'results' && (
         <div className="space-y-6">
-          <h3 className="text-xl font-bold text-gray-800">Classifica Parziale</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-gray-800">
+              {isFinalized ? 'Classifica Finale' : 'Classifica Parziale'}
+            </h3>
+            {isFinalized && (
+              <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                ✓ Hackathon Finalizzato
+              </span>
+            )}
+          </div>
 
           {/* Classifica */}
           <div className="space-y-3">
@@ -473,6 +512,123 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
                 ))}
               </div>
             </div>
+          )}
+
+          {/* Pulsante Finalizza (solo docente) */}
+          {isTeacher && !isFinalized && votesSummary.length > 0 && (
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-6 border border-green-200">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-green-800 flex items-center gap-2">
+                    <span>🏁</span>
+                    Finalizza Hackathon
+                  </h3>
+                  <p className="text-sm text-green-600 mt-1">
+                    Assegna i punti finali a tutti gli studenti delle squadre
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowFinalizeConfirm(true)}
+                  className="px-6 py-3 bg-green-600 text-white font-medium rounded-xl hover:bg-green-700 transition-colors shadow-lg"
+                >
+                  🏆 Finalizza e Assegna Punti
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Risultati finalizzazione */}
+          {finalizeResults && finalizeResults.length > 0 && (
+            <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-6 border border-blue-200">
+              <h3 className="text-lg font-bold text-blue-800 mb-4 flex items-center gap-2">
+                <span>📊</span>
+                Riepilogo Punti Assegnati
+              </h3>
+              <div className="space-y-3">
+                {finalizeResults.map((result) => (
+                  <div
+                    key={result.team_id}
+                    className="flex items-center justify-between p-3 bg-white rounded-xl shadow-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">
+                        {result.position === 1 ? '🥇' : result.position === 2 ? '🥈' : result.position === 3 ? '🥉' : `${result.position}°`}
+                      </span>
+                      <div>
+                        <div className="font-semibold text-gray-800">{result.team_name}</div>
+                        <div className="text-xs text-gray-500">
+                          {result.members_count} membri · {result.vote_points} voti + {result.prize_points} premio
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="font-bold text-lg text-indigo-600">
+                        {result.points_per_member} pt/studente
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        Totale: {result.total_points} pt
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Modal conferma finalizzazione */}
+          {showFinalizeConfirm && (
+            <>
+              <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowFinalizeConfirm(false)} />
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg" onClick={e => e.stopPropagation()}>
+                  <div className="p-6 border-b">
+                    <h3 className="text-xl font-bold text-gray-800">Conferma Finalizzazione</h3>
+                  </div>
+                  <div className="p-6 space-y-4">
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                      <p className="text-amber-800 font-medium">
+                        ⚠️ Attenzione: questa azione non può essere annullata!
+                      </p>
+                      <p className="text-sm text-amber-600 mt-2">
+                        I punti verranno assegnati permanentemente a tutti gli studenti delle squadre.
+                      </p>
+                    </div>
+
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-gray-700">Anteprima distribuzione punti:</h4>
+                      {votesSummary.slice(0, 5).map((team, idx) => {
+                        const position = idx + 1;
+                        const prizePoints = position <= 3 ? [2000, 1000, 500][position - 1] : 0;
+                        const total = team.total_points + prizePoints;
+                        return (
+                          <div key={team.team_id} className="flex justify-between text-sm p-2 bg-gray-50 rounded">
+                            <span>{position}° - {team.team_name}</span>
+                            <span className="font-medium">
+                              {team.total_points} + {prizePoints} = {total} pt
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="border-t p-4 bg-gray-50 flex gap-2">
+                    <button
+                      onClick={() => setShowFinalizeConfirm(false)}
+                      className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                    >
+                      Annulla
+                    </button>
+                    <button
+                      onClick={handleFinalizeHackathon}
+                      disabled={isFinalizing}
+                      className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {isFinalizing ? 'Assegnazione in corso...' : '✓ Conferma e Assegna'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </>
           )}
         </div>
       )}

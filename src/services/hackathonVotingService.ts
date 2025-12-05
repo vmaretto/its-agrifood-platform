@@ -276,36 +276,132 @@ export async function removeJuryMember(juryMemberId: string): Promise<boolean> {
 }
 
 // ============================================
-// PRIZE ASSIGNMENT
+// POINTS DISTRIBUTION
 // ============================================
 
-// Assegna i premi finali alle squadre (solo docente)
-export async function assignPrizes(
-  hackathonId: string,
-  rankings: { teamId: string; position: number }[]
-): Promise<boolean> {
-  // Assegna bonus points per ogni posizione
-  for (const ranking of rankings) {
-    const prizePoints = PRIZE_POINTS[ranking.position as keyof typeof PRIZE_POINTS] || 0;
+export interface FinalizeResult {
+  team_name: string;
+  team_id: string;
+  position: number;
+  vote_points: number;
+  prize_points: number;
+  total_points: number;
+  points_per_member: number;
+  members_count: number;
+}
 
-    if (prizePoints > 0) {
-      const { error } = await supabase
-        .from('bonus_points')
-        .insert([{
-          team_id: ranking.teamId,
-          student_id: null,
-          points: prizePoints,
-          reason: `Hackathon - ${ranking.position}° classificato`
-        }]);
+// Distribuisce i punti hackathon agli studenti della squadra
+export async function distributeTeamPointsToMembers(
+  teamId: string,
+  totalPoints: number,
+  reason: string
+): Promise<{ success: boolean; membersCount: number; pointsPerMember: number }> {
+  // 1. Ottieni membri squadra
+  const { data: members, error: membersError } = await supabase
+    .from('students')
+    .select('id')
+    .eq('team_id', teamId);
 
-      if (error) {
-        console.error('Error assigning prize:', error);
-        return false;
-      }
-    }
+  if (membersError || !members || members.length === 0) {
+    console.error('Error fetching team members:', membersError);
+    return { success: false, membersCount: 0, pointsPerMember: 0 };
   }
 
-  return true;
+  // 2. Calcola punti per membro
+  const pointsPerMember = Math.floor(totalPoints / members.length);
+
+  if (pointsPerMember <= 0) {
+    return { success: true, membersCount: members.length, pointsPerMember: 0 };
+  }
+
+  // 3. Inserisci bonus per ogni membro
+  const bonuses = members.map(m => ({
+    student_id: m.id,
+    points: pointsPerMember,
+    reason: reason,
+    assigned_by: 'hackathon'
+  }));
+
+  const { error } = await supabase
+    .from('bonus_points')
+    .insert(bonuses);
+
+  if (error) {
+    console.error('Error distributing points:', error);
+    return { success: false, membersCount: members.length, pointsPerMember };
+  }
+
+  return { success: true, membersCount: members.length, pointsPerMember };
+}
+
+// Controlla se hackathon già finalizzato
+export async function isHackathonFinalized(hackathonId: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .from('bonus_points')
+    .select('id')
+    .ilike('reason', `%Hackathon%`)
+    .ilike('assigned_by', 'hackathon')
+    .limit(1);
+
+  // Controllo più specifico cercando bonus con hackathon_id nel reason
+  const { data: specificCheck } = await supabase
+    .from('bonus_points')
+    .select('id')
+    .ilike('reason', `%${hackathonId}%`)
+    .limit(1);
+
+  return (specificCheck && specificCheck.length > 0) || false;
+}
+
+// Finalizza hackathon e assegna tutti i punti
+export async function finalizeHackathon(
+  hackathonId: string,
+  hackathonName: string
+): Promise<{ success: boolean; results: FinalizeResult[] }> {
+  // Controlla se già finalizzato
+  const alreadyFinalized = await isHackathonFinalized(hackathonId);
+  if (alreadyFinalized) {
+    console.error('Hackathon already finalized');
+    return { success: false, results: [] };
+  }
+
+  const results: FinalizeResult[] = [];
+
+  // 1. Ottieni classifica finale
+  const rankings = await getFinalRankings(hackathonId);
+
+  for (let i = 0; i < rankings.length; i++) {
+    const team = rankings[i];
+    const position = i + 1;
+
+    // Punti dai voti (stelle × 100)
+    let totalPoints = team.total_points;
+
+    // Aggiungi premio posizione (1°, 2°, 3°)
+    const prizePoints = PRIZE_POINTS[position as keyof typeof PRIZE_POINTS] || 0;
+    totalPoints += prizePoints;
+
+    // Costruisci reason con hackathon_id per tracciabilità
+    const reason = prizePoints > 0
+      ? `Hackathon ${hackathonName} [${hackathonId}] - ${position}° classificato (${team.total_points} voti + ${prizePoints} premio)`
+      : `Hackathon ${hackathonName} [${hackathonId}] - Punti voti (${team.total_points})`;
+
+    // Distribuisci ai membri
+    const distribution = await distributeTeamPointsToMembers(team.team_id, totalPoints, reason);
+
+    results.push({
+      team_name: team.team_name,
+      team_id: team.team_id,
+      position,
+      vote_points: team.total_points,
+      prize_points: prizePoints,
+      total_points: totalPoints,
+      points_per_member: distribution.pointsPerMember,
+      members_count: distribution.membersCount
+    });
+  }
+
+  return { success: true, results };
 }
 
 // ============================================
