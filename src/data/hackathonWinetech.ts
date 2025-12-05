@@ -513,12 +513,12 @@ export const hackathonWinetechModule: ModuleJSON = {
           { "id": "tech", "name": "Uso Tech", "emoji": "🤖", "description": "Integrazione tecnologie corso", "maxScore": 5 }
         ],
         "prizes": [
-          { "position": "🥇", "label": "1° Classificato", "points": 500, "badge": "🏆 Hackathon Champion" },
-          { "position": "🥈", "label": "2° Classificato", "points": 300, "badge": "⭐ Runner Up" },
-          { "position": "🥉", "label": "3° Classificato", "points": 200, "badge": "🌟 Top Pitcher" },
-          { "position": "🎬", "label": "Best Pitch Format", "points": 100, "badge": "🎬 Creative Award" },
-          { "position": "🤖", "label": "Best Tech Integration", "points": 100, "badge": "🤖 Tech Master" },
-          { "position": "💡", "label": "Most Innovative", "points": 100, "badge": "💡 Innovation Award" }
+          { "position": "🥇", "label": "1° Classificato", "points": 2000, "badge": "🏆 Hackathon Champion" },
+          { "position": "🥈", "label": "2° Classificato", "points": 1000, "badge": "⭐ Runner Up" },
+          { "position": "🥉", "label": "3° Classificato", "points": 500, "badge": "🌟 Top Pitcher" },
+          { "position": "🎬", "label": "Best Pitch Format", "points": 200, "badge": "🎬 Creative Award" },
+          { "position": "🤖", "label": "Best Tech Integration", "points": 200, "badge": "🤖 Tech Master" },
+          { "position": "💡", "label": "Most Innovative", "points": 200, "badge": "💡 Innovation Award" }
         ],
         "alertBox": {
           "type": "info",

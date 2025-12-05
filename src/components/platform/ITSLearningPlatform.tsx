@@ -77,6 +77,13 @@ const AdminDashboard = () => {
   const [bonusReason, setBonusReason] = React.useState('');
   const [isAssigningBonus, setIsAssigningBonus] = React.useState(false);
 
+  // Stato per il modal badge
+  const [showBadgeModal, setShowBadgeModal] = React.useState(false);
+  const [badgeStudent, setBadgeStudent] = React.useState<StudentWithProgress | null>(null);
+  const [availableBadges, setAvailableBadges] = React.useState<import('@/services/badgesService').Badge[]>([]);
+  const [selectedBadgeId, setSelectedBadgeId] = React.useState<string | null>(null);
+  const [isAssigningBadge, setIsAssigningBadge] = React.useState(false);
+
   // Carica tutti i dati da Supabase
   React.useEffect(() => {
     const loadData = async () => {
@@ -304,6 +311,59 @@ const AdminDashboard = () => {
       alert('Errore nell\'assegnazione del bonus');
     }
     setIsAssigningBonus(false);
+  };
+
+  // Apri modal per assegnare badge a studente
+  const handleOpenBadgeModal = async (student: StudentWithProgress, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setBadgeStudent(student);
+    setSelectedBadgeId(null);
+
+    // Carica i badge manuali disponibili
+    try {
+      const { getBadges } = await import('@/services/badgesService');
+      const badges = await getBadges();
+      // Filtra solo badge manuali e attivi
+      const manualBadges = badges.filter(b => b.criteria_type === 'manual' && b.is_active);
+      setAvailableBadges(manualBadges);
+    } catch (err) {
+      console.error('Error loading badges:', err);
+      setAvailableBadges([]);
+    }
+    setShowBadgeModal(true);
+  };
+
+  // Assegna badge allo studente
+  const handleAssignBadge = async () => {
+    if (!badgeStudent || !selectedBadgeId) return;
+
+    setIsAssigningBadge(true);
+    try {
+      const { awardBadge } = await import('@/services/badgesService');
+      const result = await awardBadge(badgeStudent.id, selectedBadgeId, 'teacher');
+
+      if (result) {
+        // Trova il badge per i punti
+        const badge = availableBadges.find(b => b.id === selectedBadgeId);
+        if (badge && badge.points_reward > 0) {
+          // Aggiorna i punti nella UI
+          setStudents(prev => prev.map(s =>
+            s.id === badgeStudent.id
+              ? { ...s, points: s.points + badge.points_reward }
+              : s
+          ));
+        }
+        alert(`Badge "${badge?.name}" assegnato con successo!`);
+        setShowBadgeModal(false);
+        setBadgeStudent(null);
+      } else {
+        alert('Badge già assegnato a questo studente');
+      }
+    } catch (err) {
+      console.error('Error assigning badge:', err);
+      alert('Errore nell\'assegnazione del badge');
+    }
+    setIsAssigningBadge(false);
   };
 
   // Helper per formattare tempo relativo
@@ -540,13 +600,22 @@ const AdminDashboard = () => {
                       <span className="font-bold text-indigo-600">{student.points} pt</span>
                     </td>
                     <td className="p-3 text-right">
-                      <button
-                        onClick={(e) => handleOpenBonusModal(student, e)}
-                        className="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-200 transition-colors"
-                        title="Assegna bonus"
-                      >
-                        +Bonus
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={(e) => handleOpenBadgeModal(student, e)}
+                          className="px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg text-sm font-medium hover:bg-amber-200 transition-colors"
+                          title="Assegna badge"
+                        >
+                          🏅 Badge
+                        </button>
+                        <button
+                          onClick={(e) => handleOpenBonusModal(student, e)}
+                          className="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg text-sm font-medium hover:bg-emerald-200 transition-colors"
+                          title="Assegna bonus"
+                        >
+                          +Bonus
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -631,9 +700,22 @@ const AdminDashboard = () => {
                 <div className="flex items-center justify-between">
                   <div className="text-white">
                     <h2 className="text-xl font-bold">{selectedStudent.first_name} {selectedStudent.last_name}</h2>
-                    <p className="text-sm opacity-90">
-                      {selectedStudent.team_name || 'Nessuna squadra'} · {selectedStudent.points} pt · {formatTotalTime(selectedStudent.total_time_seconds)} totali
-                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {selectedStudent.team_name ? (
+                        <span
+                          className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium"
+                          style={{ backgroundColor: selectedStudent.team_color || '#ffffff', color: '#333' }}
+                        >
+                          {selectedStudent.team_name}
+                        </span>
+                      ) : (
+                        <span className="text-sm opacity-70">Nessuna squadra</span>
+                      )}
+                      <span className="opacity-70">·</span>
+                      <span className="text-sm opacity-90">{selectedStudent.points} pt</span>
+                      <span className="opacity-70">·</span>
+                      <span className="text-sm opacity-90">{formatTotalTime(selectedStudent.total_time_seconds)} totali</span>
+                    </div>
                   </div>
                   <button
                     onClick={() => setSelectedStudent(null)}
@@ -773,6 +855,92 @@ const AdminDashboard = () => {
                   className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isAssigningBonus ? 'Assegnazione...' : `Assegna +${bonusPoints} pt`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Modal Assegna Badge */}
+      {showBadgeModal && badgeStudent && (
+        <>
+          <div className="fixed inset-0 bg-black/50 z-50" onClick={() => setShowBadgeModal(false)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
+              {/* Header */}
+              <div className="p-6 border-b bg-gradient-to-r from-amber-500 to-orange-600">
+                <div className="flex items-center justify-between">
+                  <div className="text-white">
+                    <h2 className="text-xl font-bold">Assegna Badge</h2>
+                    <p className="text-sm opacity-90">
+                      {badgeStudent.first_name} {badgeStudent.last_name}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowBadgeModal(false)}
+                    className="text-white/80 hover:text-white text-2xl"
+                  >
+                    &times;
+                  </button>
+                </div>
+              </div>
+
+              {/* Contenuto */}
+              <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                {availableBadges.length === 0 ? (
+                  <div className="text-center py-4 text-gray-500">
+                    <p>Nessun badge manuale disponibile.</p>
+                    <p className="text-sm mt-2">Crea prima un badge con tipo "Manuale" nella sezione Badge.</p>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-600">Seleziona il badge da assegnare:</p>
+                    <div className="space-y-2">
+                      {availableBadges.map(badge => (
+                        <button
+                          key={badge.id}
+                          onClick={() => setSelectedBadgeId(badge.id)}
+                          className={`w-full p-4 rounded-xl text-left transition-all flex items-center gap-4 ${
+                            selectedBadgeId === badge.id
+                              ? 'bg-amber-100 ring-2 ring-amber-500'
+                              : 'bg-gray-50 hover:bg-gray-100'
+                          }`}
+                        >
+                          <span className="text-3xl">{badge.icon}</span>
+                          <div className="flex-1">
+                            <div className="font-semibold text-gray-800">{badge.name}</div>
+                            {badge.description && (
+                              <div className="text-sm text-gray-500">{badge.description}</div>
+                            )}
+                          </div>
+                          {badge.points_reward > 0 && (
+                            <div className="text-right">
+                              <div className="font-bold text-amber-600">+{badge.points_reward}</div>
+                              <div className="text-xs text-gray-500">punti</div>
+                            </div>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="border-t p-4 bg-gray-50 flex gap-2">
+                <button
+                  onClick={() => setShowBadgeModal(false)}
+                  className="flex-1 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Annulla
+                </button>
+                <button
+                  onClick={handleAssignBadge}
+                  disabled={isAssigningBadge || !selectedBadgeId}
+                  className="flex-1 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isAssigningBadge ? 'Assegnazione...' : 'Assegna Badge'}
                 </button>
               </div>
             </div>
