@@ -100,11 +100,24 @@ export async function submitTeamVotes(
     score: v.score
   }));
 
-  const { error } = await supabase
+  // Prima elimina i voti esistenti per questo votante/squadra, poi inserisce i nuovi
+  // Questo evita problemi con l'upsert se l'indice UNIQUE non è configurato correttamente
+  const { error: deleteError } = await supabase
     .from('hackathon_votes')
-    .upsert(votesToInsert, {
-      onConflict: 'hackathon_id,team_id,voter_id,criterion_id'
-    });
+    .delete()
+    .eq('hackathon_id', hackathonId)
+    .eq('team_id', teamId)
+    .eq('voter_id', voterId);
+
+  if (deleteError) {
+    console.error('Error deleting existing votes:', deleteError);
+    // Continua comunque, potrebbe non esserci nulla da eliminare
+  }
+
+  const { data, error } = await supabase
+    .from('hackathon_votes')
+    .insert(votesToInsert)
+    .select();
 
   if (error) {
     console.error('Error submitting team votes:', error);
