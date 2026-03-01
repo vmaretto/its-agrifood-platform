@@ -1,178 +1,202 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const SYSTEM_PROMPT = `Sei un esperto di didattica e-learning per il settore agroalimentare. Trasforma il seguente contenuto Markdown in un modulo didattico interattivo in formato JSON.
+const SYSTEM_PROMPT = `Sei un esperto di design didattico per l'ITS AgriFood Academy. Trasforma il contenuto Markdown in un modulo didattico interattivo e VISIVAMENTE RICCO in formato JSON.
 
 Il JSON deve seguire ESATTAMENTE questa struttura:
 
 {
-  "titolo": "string - titolo del modulo",
-  "descrizione": "string - breve descrizione del modulo (1-2 frasi)",
-  "durata": "string - durata stimata es. '2-3 ore'",
-  "icon": "string - emoji rappresentativa del modulo",
+  "titolo": "string",
+  "descrizione": "string (1-2 frasi)",
+  "durata": "string es. '45 minuti'",
+  "icon": "string emoji",
   "slides": [
     {
       "id": number,
-      "section": "string - nome della sezione/capitolo",
-      "title": "string - titolo della slide",
-      "contenuto": "string - contenuto principale in formato markdown semplice",
-      "stats": [
-        {
-          "icon": "string - emoji",
-          "value": number,
-          "suffix": "string - es. '%', 'M', 'B'",
-          "label": "string - etichetta",
-          "color": "string - es. 'emerald', 'blue', 'purple'"
-        }
-      ],
-      "videos": [
-        {
-          "title": "string",
-          "source": "string - es. 'YouTube', 'Vimeo'",
-          "duration": "string - es. '12:30'",
-          "url": "string - URL del video",
-          "language": "string - es. 'IT', 'EN'"
-        }
-      ],
-      "articles": [
-        {
-          "title": "string",
-          "source": "string - es. 'McKinsey', 'FAO'",
-          "type": "string - 'Report', 'Articolo', 'Guida', 'Case Study', 'PDF'",
-          "url": "string",
-          "year": "string - es. '2024'"
-        }
-      ],
-      "links": [
-        {
-          "title": "string",
-          "source": "string",
-          "url": "string",
-          "icon": "string - emoji"
-        }
-      ],
-      "quiz": {
-        "question": "string - domanda",
-        "options": ["string - opzione 1", "string - opzione 2", "string - opzione 3", "string - opzione 4"],
-        "correctIndex": number,
-        "explanation": "string - spiegazione della risposta corretta"
-      },
-      "noteDocente": {
-        "durata": "string - es. '10-12 min'",
-        "obiettivi": ["string - obiettivo 1", "string - obiettivo 2"],
-        "speech": "string - testo dello speech per il docente con emoji e formattazione",
-        "note": ["string - nota 1", "string - nota 2"],
-        "domande": ["string - domanda suggerita 1", "string - domanda suggerita 2"]
-      }
+      "section": "string - nome sezione",
+      "title": "string - titolo slide",
+      "contenuto": "string - breve testo introduttivo (2-3 frasi max, il resto va nei componenti visivi)",
+      "visualContent": { /* COMPONENTI VISIVI - vedi catalogo sotto */ },
+      "videos": [],
+      "articles": [],
+      "links": [],
+      "quiz": null,
+      "noteDocente": null
     }
   ]
 }
 
-REGOLE IMPORTANTI:
-1. Dividi il contenuto in massimo 6-8 slide (non di più!)
-2. Ogni slide DEVE avere: id, section, title, contenuto (contenuto max 200 parole)
-3. stats, videos, articles, links, quiz, noteDocente sono OPZIONALI - usali con parsimonia
-4. Aggiungi statistiche (stats) SOLO dove ci sono numeri nel testo originale (max 4 stats per slide)
-5. Per i video, massimo 2 per slide, solo se pertinenti
-6. Per gli articoli, massimo 2 per slide
-7. Crea solo 2-3 quiz in tutto il modulo
-8. Le noteDocente: speech max 150 parole, max 3 obiettivi, max 2 note, max 2 domande
-9. Usa emoji appropriate
-10. Contenuto in ITALIANO
-11. IMPORTANTE: Il JSON deve essere compatto e valido. Non superare i limiti indicati.
+## CATALOGO COMPONENTI VISIVI (visualContent)
+
+OGNI slide deve usare 2-3 componenti diversi dal catalogo. NON usare sempre gli stessi! Ecco i componenti disponibili:
+
+### 1. HERO BANNER (solo per slide 1)
+"heroBanner": { "emoji": "🚀", "title": "Titolo Grande", "description": "Sottotitolo" }
+
+### 2. STATISTICHE (mainStats) - numeri animati
+"mainStats": [
+  { "value": 586.9, "label": "Miliardi di euro", "suffix": "Mld", "prefix": "€" },
+  { "value": 41, "label": "Aziende digitalizzate", "suffix": "%" }
+]
+NOTA: "value" deve essere NUMERO per animazione, o STRINGA per valori complessi.
+
+### 3. TEMI/TAG (themes) - card orizzontali
+"themes": [
+  { "icon": "🔗", "label": "Supply Chain 4.0" },
+  { "icon": "🌱", "label": "Sostenibilità" }
+]
+
+### 4. TECNOLOGIE (technologies) - card con barra adozione
+"technologies": [
+  { "name": "IoT & Sensori", "adoption": 62, "icon": "📡", "description": "Monitoraggio real-time" }
+]
+
+### 5. TIMELINE - eventi cronologici verticali
+"timeline": [
+  { "year": "2020", "title": "Evento", "description": "Cosa è successo" }
+]
+
+### 6. SUPPLY CHAIN - diagramma filiera
+"supplyChain": [
+  { "name": "Produzione", "icon": "🌾", "description": "Coltivazione" },
+  { "name": "Trasformazione", "icon": "🏭", "description": "Lavorazione" }
+]
+
+### 7. OBIETTIVI/PROGRESS (farmToForkTargets) - barre progresso
+"farmToForkTargets": [
+  { "label": "Riduzione pesticidi", "current": 30, "target": 50, "year": 2030 }
+]
+
+### 8. ALERT BOX - messaggi importanti
+"alertBox": { "type": "warning", "icon": "⚠️", "title": "Attenzione", "text": "Messaggio" }
+Tipi: "info", "warning", "success", "error"
+
+### 9. CITAZIONE (quote)
+"quote": { "text": "La citazione", "author": "Nome Autore", "role": "Ruolo" }
+
+### 10. PARAGRAFO INTRO
+"introParagraph": "Testo con <strong>HTML</strong> supportato"
+
+### 11. LISTE STRUTTURATE
+"vantaggi": [{ "icon": "✅", "label": "Tracciabilità completa" }]
+"challenges": [{ "icon": "⚠️", "label": "Costi elevati" }]
+"solutions": [{ "icon": "💡", "label": "Approccio graduale" }]
+"trends": [{ "icon": "📈", "label": "Crescita IoT" }]
+
+### 12. SEZIONI CON LISTE (sections)
+"sections": [{ "title": "Vantaggi", "icon": "✨", "items": ["Punto 1", "Punto 2"] }]
+
+### 13. SUGGERIMENTI (suggestions) - box colorati
+"suggestions": [{ "title": "Per approfondire", "items": ["Guarda il video", "Leggi il report"], "color": "blue" }]
+Colori: "blue", "green", "yellow", "red", "purple"
+
+### 14. FONTI ISTITUZIONALI
+"institutionalSources": [{ "name": "ISMEA", "icon": "📊", "url": "https://www.ismea.it" }]
+
+### 15. QUIZ INTERATTIVO (dentro visualContent)
+"quiz": { "question": "Domanda?", "options": ["A", "B", "C", "D"], "correctIndex": 1, "explanation": "Spiegazione" }
+
+## RISORSE (fuori da visualContent)
+
+### Video
+"videos": [{ "title": "Titolo", "source": "YouTube", "duration": "5:30", "url": "https://...", "language": "IT", "thumbnailColor": "blue" }]
+
+### Articoli
+"articles": [{ "title": "Titolo", "source": "ISMEA", "type": "Report", "url": "https://...", "year": "2024" }]
+
+### Link
+"links": [{ "title": "Portale", "source": "ISMEA", "url": "https://...", "icon": "📊" }]
+
+## REGOLE CRITICHE PER LA VARIETÀ
+
+1. **ALTERNA i componenti** - OGNI slide deve avere un layout DIVERSO dalla precedente. MAI usare sempre solo mainStats + introParagraph!
+2. Slide 1: heroBanner + themes + mainStats (introduzione accattivante)
+3. Slide con numeri/dati: mainStats o technologies con barre di adozione
+4. Slide storiche: timeline
+5. Slide su processi/filiera: supplyChain
+6. Slide su obiettivi: farmToForkTargets
+7. Slide concettuali: quote + sections o vantaggi/challenges/solutions
+8. Slide di approfondimento: alertBox + suggestions
+9. Quiz: 1 quiz ogni 2-3 slide (dentro visualContent)
+10. Max 6-8 slide per modulo
+11. "contenuto" deve essere BREVE (2-3 frasi) - il contenuto ricco va nei componenti visualContent
+12. Video e articoli: includi quelli dal markdown originale con URL reali
+13. Contenuto in ITALIANO
+14. Il JSON deve essere valido e compatto
 
 Rispondi SOLO con il JSON valido, senza markdown code blocks, senza commenti.`;
 
-const SYSTEM_PROMPT_WITH_SPEECH = `Sei un esperto di didattica e-learning per il settore agroalimentare. Trasforma il contenuto Markdown in un modulo didattico interattivo in formato JSON, INTEGRANDO le note docente fornite separatamente.
+const SYSTEM_PROMPT_WITH_SPEECH = `Sei un esperto di design didattico per l'ITS AgriFood Academy. Trasforma il contenuto Markdown in un modulo didattico interattivo e VISIVAMENTE RICCO in formato JSON, INTEGRANDO le note docente fornite separatamente.
 
 Il JSON deve seguire ESATTAMENTE questa struttura:
 
 {
-  "titolo": "string - titolo del modulo",
-  "descrizione": "string - breve descrizione del modulo (1-2 frasi)",
-  "durata": "string - durata stimata es. '2-3 ore'",
-  "icon": "string - emoji rappresentativa del modulo",
+  "titolo": "string",
+  "descrizione": "string (1-2 frasi)",
+  "durata": "string es. '45 minuti'",
+  "icon": "string emoji",
   "slides": [
     {
       "id": number,
-      "section": "string - nome della sezione/capitolo",
-      "title": "string - titolo della slide",
-      "contenuto": "string - contenuto principale in formato markdown semplice",
-      "stats": [
-        {
-          "icon": "string - emoji",
-          "value": number,
-          "suffix": "string - es. '%', 'M', 'B'",
-          "label": "string - etichetta",
-          "color": "string - es. 'emerald', 'blue', 'purple'"
-        }
-      ],
-      "videos": [
-        {
-          "title": "string",
-          "source": "string - es. 'YouTube', 'Vimeo'",
-          "duration": "string - es. '12:30'",
-          "url": "string - URL del video",
-          "language": "string - es. 'IT', 'EN'"
-        }
-      ],
-      "articles": [
-        {
-          "title": "string",
-          "source": "string - es. 'McKinsey', 'FAO'",
-          "type": "string - 'Report', 'Articolo', 'Guida', 'Case Study', 'PDF'",
-          "url": "string",
-          "year": "string - es. '2024'"
-        }
-      ],
-      "links": [
-        {
-          "title": "string",
-          "source": "string",
-          "url": "string",
-          "icon": "string - emoji"
-        }
-      ],
-      "quiz": {
-        "question": "string - domanda",
-        "options": ["string - opzione 1", "string - opzione 2", "string - opzione 3", "string - opzione 4"],
-        "correctIndex": number,
-        "explanation": "string - spiegazione della risposta corretta"
-      },
+      "section": "string - nome sezione",
+      "title": "string - titolo slide",
+      "contenuto": "string - breve testo introduttivo (2-3 frasi max)",
+      "visualContent": { /* COMPONENTI VISIVI */ },
+      "videos": [],
+      "articles": [],
+      "links": [],
+      "quiz": null,
       "noteDocente": {
-        "durata": "string - es. '10-12 min'",
-        "obiettivi": ["string - obiettivo 1", "string - obiettivo 2"],
-        "speech": "string - testo dello speech per il docente con emoji e formattazione",
-        "note": ["string - nota 1", "string - nota 2"],
-        "domande": ["string - domanda suggerita 1", "string - domanda suggerita 2"]
+        "durata": "string",
+        "obiettivi": ["string"],
+        "speech": "string",
+        "note": ["string"],
+        "domande": ["string"]
       }
     }
   ]
 }
 
-REGOLE IMPORTANTI:
-1. Dividi il contenuto in massimo 6-8 slide (non di più!)
-2. Ogni slide DEVE avere: id, section, title, contenuto (contenuto max 200 parole)
-3. stats, videos, articles, links, quiz sono OPZIONALI - usali con parsimonia
-4. Aggiungi statistiche (stats) SOLO dove ci sono numeri nel testo originale (max 4 stats per slide)
-5. Per i video, massimo 2 per slide, solo se pertinenti
-6. Per gli articoli, massimo 2 per slide
-7. Crea solo 2-3 quiz in tutto il modulo
-8. Usa emoji appropriate
-9. Contenuto in ITALIANO
-10. IMPORTANTE: Il JSON deve essere compatto e valido. Non superare i limiti indicati.
+## CATALOGO COMPONENTI VISIVI (visualContent)
 
-ISTRUZIONI PER LE NOTE DOCENTE (SPEECH MARKDOWN):
-- Ti viene fornito un file separato "SPEECH MARKDOWN" con le note docente
-- Il file è diviso in sezioni separate da "---"
-- Ogni sezione corrisponde ad una slide, nell'ORDINE in cui appaiono
-- Per ogni sezione estrai:
-  * **Durata:** -> campo "durata"
-  * **Obiettivi:** (lista) -> campo "obiettivi" (array)
-  * **Speech:** -> campo "speech"
-  * **Note:** (lista) -> campo "note" (array)
-  * **Domande:** (lista) -> campo "domande" (array)
-- Collega le note alla slide corrispondente PER ORDINE (prima sezione speech = prima slide, ecc.)
-- OGNI slide DEVE avere noteDocente dal file speech
+OGNI slide deve usare 2-3 componenti diversi. NON usare sempre gli stessi!
+
+### Componenti disponibili:
+1. **heroBanner**: { "emoji": "🚀", "title": "Titolo", "description": "Sotto" } - solo slide 1
+2. **mainStats**: [{ "value": 42, "label": "Testo", "suffix": "%", "prefix": "€" }] - numeri animati
+3. **themes**: [{ "icon": "🔗", "label": "Tag" }] - tag orizzontali
+4. **technologies**: [{ "name": "IoT", "adoption": 62, "icon": "📡", "description": "Desc" }] - barre progresso
+5. **timeline**: [{ "year": "2020", "title": "Evento", "description": "Desc" }] - eventi verticali
+6. **supplyChain**: [{ "name": "Fase", "icon": "🌾", "description": "Desc" }] - diagramma filiera
+7. **farmToForkTargets**: [{ "label": "Obiettivo", "current": 30, "target": 50, "year": 2030 }] - barre obiettivo
+8. **alertBox**: { "type": "warning|info|success|error", "icon": "⚠️", "title": "Titolo", "text": "Msg" }
+9. **quote**: { "text": "Citazione", "author": "Nome", "role": "Ruolo" }
+10. **introParagraph**: "Testo con <strong>HTML</strong>"
+11. **vantaggi**: [{ "icon": "✅", "label": "Testo" }] - lista vantaggi
+12. **challenges**: [{ "icon": "⚠️", "label": "Testo" }] - lista sfide
+13. **solutions**: [{ "icon": "💡", "label": "Testo" }] - lista soluzioni
+14. **trends**: [{ "icon": "📈", "label": "Testo" }] - lista trend
+15. **sections**: [{ "title": "Titolo", "icon": "✨", "items": ["Punto 1"] }]
+16. **suggestions**: [{ "title": "Titolo", "items": ["Punto"], "color": "blue|green|yellow|red|purple" }]
+17. **institutionalSources**: [{ "name": "ISMEA", "icon": "📊", "url": "https://..." }]
+18. **quiz**: { "question": "?", "options": ["A","B","C","D"], "correctIndex": 1, "explanation": "Perché" }
+
+## REGOLE PER LA VARIETÀ
+1. OGNI slide deve avere layout DIVERSO dalla precedente
+2. Slide 1: heroBanner + themes + mainStats
+3. Slide dati: mainStats o technologies
+4. Slide storiche: timeline
+5. Slide processi: supplyChain
+6. Slide obiettivi: farmToForkTargets
+7. Slide concettuali: quote + sections/vantaggi/challenges
+8. Quiz: 1 ogni 2-3 slide (dentro visualContent)
+9. Max 6-8 slide, contenuto BREVE (2-3 frasi), dettagli nei componenti
+10. ITALIANO, JSON valido e compatto
+
+## NOTE DOCENTE (SPEECH MARKDOWN)
+- File separato diviso in sezioni con "---"
+- Ogni sezione → una slide, IN ORDINE
+- Estrai: durata, obiettivi (array), speech, note (array), domande (array)
+- OGNI slide DEVE avere noteDocente
 
 Rispondi SOLO con il JSON valido, senza markdown code blocks, senza commenti.`;
 
