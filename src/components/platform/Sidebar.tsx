@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { UserProfile } from '@/services/authService';
+import { Course } from '@/services/coursesService';
 
 interface MenuItem {
   id: string;
@@ -17,6 +18,8 @@ interface SidebarProps {
   setActiveModule: (module: string | null) => void;
   currentUser: UserProfile | null;
   onLogout: () => void;
+  activeCourse?: Course | null;
+  onChangeCourse?: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -27,6 +30,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   setActiveModule,
   currentUser,
   onLogout,
+  activeCourse,
+  onChangeCourse,
 }) => {
   const studentMenu: MenuItem[] = [
     { id: 'home', icon: '🏠', label: 'Home' },
@@ -76,6 +81,16 @@ const Sidebar: React.FC<SidebarProps> = ({
             <div className="text-xs text-gray-500">ITS Eat Agrifuture</div>
           </div>
         </div>
+        {activeCourse && (
+          <button
+            onClick={onChangeCourse}
+            className="mt-3 w-full flex items-center gap-2 px-3 py-2 bg-emerald-50 rounded-lg text-sm text-emerald-700 hover:bg-emerald-100 transition-colors"
+          >
+            <span>{activeCourse.icon}</span>
+            <span className="font-medium truncate flex-1 text-left">{activeCourse.name}</span>
+            <span className="text-xs text-emerald-500">↩</span>
+          </button>
+        )}
       </div>
 
       {/* Breadcrumb se siamo in un modulo */}

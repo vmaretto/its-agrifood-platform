@@ -28,9 +28,10 @@ const formatTimeSpent = (seconds: number): string => {
 interface PercorsoViewProps {
   setActiveModule: (module: string | null) => void;
   currentUser?: UserProfile | null;
+  courseId?: string;
 }
 
-const PercorsoView: React.FC<PercorsoViewProps> = ({ setActiveModule, currentUser }) => {
+const PercorsoView: React.FC<PercorsoViewProps> = ({ setActiveModule, currentUser, courseId }) => {
   const [moduliDisponibili, setModuliDisponibili] = React.useState<ModuleJSON[]>([]);
   const [progressMap, setProgressMap] = React.useState<Record<string, ModuleProgress>>({});
   const [isLoading, setIsLoading] = React.useState(true);
@@ -40,7 +41,7 @@ const PercorsoView: React.FC<PercorsoViewProps> = ({ setActiveModule, currentUse
     const loadData = async () => {
       setIsLoading(true);
       try {
-        const modules = await getModules();
+        const modules = await getModules(courseId);
         setModuliDisponibili(modules);
 
         // Carica il progresso dell'utente se loggato
@@ -54,7 +55,7 @@ const PercorsoView: React.FC<PercorsoViewProps> = ({ setActiveModule, currentUse
       setIsLoading(false);
     };
     loadData();
-  }, [currentUser?.id]);
+  }, [currentUser?.id, courseId]);
 
   // Converti i moduli da Supabase nel formato Modulo per la visualizzazione
   const moduli: Modulo[] = moduliDisponibili.map((m) => {

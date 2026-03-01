@@ -74,9 +74,10 @@ interface AdminNuovoModuloProps {
   editModuleId?: string | null;
   onModuleCreated?: (module: ModuleJSON) => void;
   onCancel?: () => void;
+  courseId?: string;
 }
 
-export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCancel }: AdminNuovoModuloProps) {
+export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCancel, courseId }: AdminNuovoModuloProps) {
   // Edit mode
   const isEditMode = !!editModuleId;
   const [existingModule, setExistingModule] = useState<ModuleJSON | null>(null);
@@ -489,7 +490,7 @@ export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCanc
 
   const saveGeneratedModule = async () => {
     if (generatedModule) {
-      await saveModule(generatedModule);
+      await saveModule(generatedModule, courseId);
       onModuleCreated?.(generatedModule);
       resetForm();
     }

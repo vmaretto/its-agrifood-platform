@@ -374,6 +374,7 @@ export interface ModuleJSON {
   durata: string;
   icon: string;
   createdAt?: string;
+  courseId?: string;
   tipo?: 'contenuto' | 'quiz' | 'case-study' | 'lab' | 'challenge' | 'hackathon';
   config?: HackathonConfig;
   slides: SlideJSON[];

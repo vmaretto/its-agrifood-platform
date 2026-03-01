@@ -22,7 +22,19 @@ export interface DbTeam {
   name: string;
   color: string;
   points: number;
+  course_id?: string;
   created_at: string;
+}
+
+export interface DbCourse {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  icon: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface DbModule {
@@ -35,6 +47,7 @@ export interface DbModule {
   is_published: boolean;
   is_static: boolean;
   created_by?: string;
+  course_id?: string;
   created_at: string;
   updated_at: string;
 }

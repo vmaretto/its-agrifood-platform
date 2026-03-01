@@ -11,11 +11,15 @@ interface HomeDashboardProps {
   setCurrentView: (view: string) => void;
   setActiveModule: (module: string | null) => void;
   currentUser: UserProfile | null;
+  courseId?: string;
+  courseName?: string;
 }
 
 const HomeDashboard: React.FC<HomeDashboardProps> = ({
   setCurrentView,
   currentUser,
+  courseId,
+  courseName,
 }) => {
   const [classificaSquadre, setClassificaSquadre] = useState<Team[]>([]);
   const [userTeam, setUserTeam] = useState<Team | null>(null);
@@ -30,8 +34,8 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({
     const loadData = async () => {
       setIsLoading(true);
       try {
-        // Carica squadre
-        const teams = await getTeams();
+        // Carica squadre (filtrate per corso)
+        const teams = await getTeams(courseId);
         setClassificaSquadre(teams);
 
         // Carica la squadra dell'utente corrente se ha un team_id
@@ -63,7 +67,7 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({
       setIsLoading(false);
     };
     loadData();
-  }, [currentUser?.team_id, currentUser?.id]);
+  }, [currentUser?.team_id, currentUser?.id, courseId]);
 
   // Nome dell'utente
   const userName = currentUser ? currentUser.first_name : 'Studente';

@@ -2,7 +2,7 @@ import { supabase, DbModule } from '@/lib/supabase';
 import { ModuleJSON } from '@/types/module';
 
 // Convert ModuleJSON to DbModule format
-function toDbModule(module: ModuleJSON): Omit<DbModule, 'created_at' | 'updated_at'> {
+function toDbModule(module: ModuleJSON, courseId?: string): Omit<DbModule, 'created_at' | 'updated_at'> {
   return {
     id: module.id,
     title: module.titolo,
@@ -13,6 +13,7 @@ function toDbModule(module: ModuleJSON): Omit<DbModule, 'created_at' | 'updated_
     is_published: true,
     is_static: false,
     created_by: undefined,
+    course_id: courseId || module.courseId,
   };
 }
 
@@ -25,14 +26,15 @@ function toModuleJSON(dbModule: DbModule): ModuleJSON {
     durata: dbModule.duration || '',
     icon: dbModule.icon || '',
     createdAt: dbModule.created_at,
+    courseId: dbModule.course_id,
     slides: dbModule.slides as ModuleJSON['slides'],
   };
 }
 
 // Save or update a module
-export async function saveModuleToSupabase(module: ModuleJSON): Promise<{ success: boolean; error?: string }> {
+export async function saveModuleToSupabase(module: ModuleJSON, courseId?: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const dbModule = toDbModule(module);
+    const dbModule = toDbModule(module, courseId);
 
     const { error } = await supabase
       .from('modules')
@@ -55,13 +57,19 @@ export async function saveModuleToSupabase(module: ModuleJSON): Promise<{ succes
   }
 }
 
-// Get all modules
-export async function getModulesFromSupabase(): Promise<ModuleJSON[]> {
+// Get all modules (optionally filtered by course)
+export async function getModulesFromSupabase(courseId?: string): Promise<ModuleJSON[]> {
   try {
-    const { data, error } = await supabase
+    let query = supabase
       .from('modules')
       .select('*')
       .order('created_at', { ascending: false });
+
+    if (courseId) {
+      query = query.eq('course_id', courseId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       console.error('Error fetching modules:', error);

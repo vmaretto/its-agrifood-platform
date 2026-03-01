@@ -10,6 +10,7 @@ export interface Team {
   color: string;
   points?: number;
   member_count?: number;
+  course_id?: string;
   created_at?: string;
 }
 
@@ -48,20 +49,30 @@ export interface QuizScore {
 // TEAMS CRUD
 // ============================================
 
-export async function getTeams(): Promise<Team[]> {
+export async function getTeams(courseId?: string): Promise<Team[]> {
   // Usa la view per avere i punti calcolati
-  const { data, error } = await supabase
+  let query = supabase
     .from('teams_leaderboard')
     .select('*')
     .order('points', { ascending: false });
 
+  if (courseId) {
+    query = query.eq('course_id', courseId);
+  }
+
+  const { data, error } = await query;
+
   if (error) {
     console.error('Error fetching teams:', error);
     // Fallback alla tabella base
-    const { data: baseData } = await supabase
+    let fallbackQuery = supabase
       .from('teams')
       .select('*')
       .order('created_at', { ascending: true });
+    if (courseId) {
+      fallbackQuery = fallbackQuery.eq('course_id', courseId);
+    }
+    const { data: baseData } = await fallbackQuery;
     return (baseData || []).map(t => ({ ...t, points: 0, member_count: 0 }));
   }
 
@@ -86,7 +97,7 @@ export async function getTeam(id: string): Promise<Team | null> {
 export async function createTeam(team: Omit<Team, 'id' | 'points' | 'member_count' | 'created_at'>): Promise<Team | null> {
   const { data, error } = await supabase
     .from('teams')
-    .insert([{ name: team.name, color: team.color }])
+    .insert([{ name: team.name, color: team.color, course_id: team.course_id || null }])
     .select()
     .single();
 
@@ -132,12 +143,18 @@ export async function deleteTeam(id: string): Promise<boolean> {
 // STUDENTS CRUD
 // ============================================
 
-export async function getStudents(): Promise<Student[]> {
+export async function getStudents(courseId?: string): Promise<Student[]> {
   // Usa la view per avere i punti calcolati
-  const { data, error } = await supabase
+  let query = supabase
     .from('students_leaderboard')
     .select('*')
     .order('points', { ascending: false });
+
+  if (courseId) {
+    query = query.eq('course_id', courseId);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('Error fetching students:', error);

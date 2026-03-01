@@ -11,10 +11,12 @@ import ModuloHackathon from '../moduli/ModuloHackathon';
 import AdminNuovoModulo from './AdminNuovoModulo';
 import AdminSquadre from './AdminSquadre';
 import AuthPage from '../auth/AuthPage';
+import CourseSelector from './CourseSelector';
 import { getModules, getModuleSync, deleteModule, getModulesSync } from '@/services/moduliStorage';
 import { ModuleJSON } from '@/types/module';
 import { getCurrentUser, signOut, UserProfile } from '@/services/authService';
 import { hackathonWinetechModule } from '@/data/hackathonWinetech';
+import { Course } from '@/services/coursesService';
 
 // ============================================
 // COMPONENTI ADMIN
@@ -951,17 +953,16 @@ const AdminDashboard = () => {
   );
 };
 
-const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule }: { setActiveModule?: (id: string) => void; onRefresh?: number; onEditModule?: (moduleId: string) => void }) => {
+const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: { setActiveModule?: (id: string) => void; onRefresh?: number; onEditModule?: (moduleId: string) => void; courseId?: string }) => {
   const [modules, setModules] = React.useState<ModuleJSON[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
-  // Carica i moduli da Supabase
+  // Carica i moduli da Supabase (filtrati per corso)
   React.useEffect(() => {
     const loadModules = async () => {
       setIsLoading(true);
       try {
-        // Carica tutti i moduli da Supabase
-        const allModules = await getModules();
+        const allModules = await getModules(courseId);
         setModules(allModules);
       } catch (err) {
         console.error('Error loading modules:', err);
@@ -970,12 +971,12 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule }: { setActiv
       setIsLoading(false);
     };
     loadModules();
-  }, [onRefresh]);
+  }, [onRefresh, courseId]);
 
   const handleDeleteModule = async (id: string) => {
     if (confirm('Sei sicuro di voler eliminare questo modulo?')) {
       await deleteModule(id);
-      const allModules = await getModules();
+      const allModules = await getModules(courseId);
       setModules(allModules);
     }
   };
@@ -1633,6 +1634,9 @@ const ITSLearningPlatform: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
+  // Course state
+  const [activeCourse, setActiveCourse] = useState<Course | null>(null);
+
   // Deriva il ruolo dall'utente autenticato
   const userRole = currentUser?.role === 'teacher' || currentUser?.role === 'admin' ? 'admin' : 'student';
   const isAdmin = userRole === 'admin';
@@ -1655,6 +1659,20 @@ const ITSLearningPlatform: React.FC = () => {
   // Handler per login riuscito
   const handleAuthSuccess = (user: UserProfile) => {
     setCurrentUser(user);
+    setActiveCourse(null); // Mostra selezione corso
+    setCurrentView('home');
+  };
+
+  // Handler per selezione corso
+  const handleSelectCourse = (course: Course) => {
+    setActiveCourse(course);
+    setCurrentView('home');
+  };
+
+  // Handler per cambiare corso (torna alla selezione)
+  const handleChangeCourse = () => {
+    setActiveCourse(null);
+    setActiveModule(null);
     setCurrentView('home');
   };
 
@@ -1662,6 +1680,7 @@ const ITSLearningPlatform: React.FC = () => {
   const handleLogout = async () => {
     await signOut();
     setCurrentUser(null);
+    setActiveCourse(null);
     setCurrentView('home');
   };
 
@@ -1693,6 +1712,16 @@ const ITSLearningPlatform: React.FC = () => {
   // Se non autenticato, mostra pagina login
   if (!currentUser) {
     return <AuthPage onAuthSuccess={handleAuthSuccess} />;
+  }
+
+  // Se autenticato ma nessun corso selezionato, mostra selezione corso
+  if (!activeCourse) {
+    return (
+      <CourseSelector
+        onSelectCourse={handleSelectCourse}
+        userName={currentUser.first_name}
+      />
+    );
   }
 
   // Handler per editare un modulo
@@ -1751,10 +1780,12 @@ const ITSLearningPlatform: React.FC = () => {
             setCurrentView={setCurrentView}
             setActiveModule={setActiveModule}
             currentUser={currentUser}
+            courseId={activeCourse?.id}
+            courseName={activeCourse?.name}
           />
         );
       case 'percorso':
-        return <PercorsoView setActiveModule={setActiveModule} currentUser={currentUser} />;
+        return <PercorsoView setActiveModule={setActiveModule} currentUser={currentUser} courseId={activeCourse?.id} />;
       case 'sfide':
         return <PlaceholderView title="Sfide & Competizioni" icon="🏆" />;
       case 'tutor':
@@ -1773,9 +1804,9 @@ const ITSLearningPlatform: React.FC = () => {
       case 'admin-dashboard':
         return <AdminDashboard />;
       case 'admin-contenuti':
-        return <AdminContenuti setActiveModule={setActiveModule} onEditModule={handleEditModule} />;
+        return <AdminContenuti setActiveModule={setActiveModule} onEditModule={handleEditModule} courseId={activeCourse?.id} />;
       case 'admin-squadre':
-        return <AdminSquadre />;
+        return <AdminSquadre courseId={activeCourse?.id} />;
       case 'admin-badge':
         return <AdminBadge />;
       case 'admin-hackathon':
@@ -1792,6 +1823,7 @@ const ITSLearningPlatform: React.FC = () => {
       case 'admin-nuovo-modulo':
         return <AdminNuovoModulo
           editModuleId={editingModuleId}
+          courseId={activeCourse?.id}
           onModuleCreated={() => {
             setEditingModuleId(null);
             setCurrentView('admin-contenuti');
@@ -1812,6 +1844,8 @@ const ITSLearningPlatform: React.FC = () => {
             setCurrentView={setCurrentView}
             setActiveModule={setActiveModule}
             currentUser={currentUser}
+            courseId={activeCourse?.id}
+            courseName={activeCourse?.name}
           />
         );
     }
@@ -1827,6 +1861,8 @@ const ITSLearningPlatform: React.FC = () => {
         setActiveModule={setActiveModule}
         currentUser={currentUser}
         onLogout={handleLogout}
+        activeCourse={activeCourse}
+        onChangeCourse={handleChangeCourse}
       />
       <div className="flex-1 overflow-auto">{renderView()}</div>
     </div>

@@ -404,7 +404,11 @@ const TeamDetailModal: React.FC<TeamDetailModalProps> = ({
 // MAIN COMPONENT
 // ============================================
 
-const AdminSquadre: React.FC = () => {
+interface AdminSquadreProps {
+  courseId?: string;
+}
+
+const AdminSquadre: React.FC<AdminSquadreProps> = ({ courseId }) => {
   const [teams, setTeams] = useState<Team[]>([]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [selectedTeamStudents, setSelectedTeamStudents] = useState<Student[]>([]);
@@ -425,14 +429,14 @@ const AdminSquadre: React.FC = () => {
   // Load data
   useEffect(() => {
     loadData();
-  }, []);
+  }, [courseId]);
 
   const loadData = async () => {
     setIsLoading(true);
     try {
       const [teamsData, studentsData] = await Promise.all([
-        getTeams(),
-        getStudents()
+        getTeams(courseId),
+        getStudents(courseId)
       ]);
       setTeams(teamsData);
       setAllStudents(studentsData);
@@ -463,7 +467,7 @@ const AdminSquadre: React.FC = () => {
     if (editingTeam) {
       await updateTeam(editingTeam.id, teamData);
     } else {
-      await createTeam(teamData);
+      await createTeam({ ...teamData, course_id: courseId });
     }
     await loadData();
     setIsSaving(false);

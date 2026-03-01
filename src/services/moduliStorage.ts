@@ -16,9 +16,9 @@ let cacheTimestamp = 0;
 const CACHE_DURATION = 30000; // 30 secondi
 
 // Salva un modulo (Supabase + localStorage come backup)
-export async function saveModule(module: ModuleJSON): Promise<void> {
+export async function saveModule(module: ModuleJSON, courseId?: string): Promise<void> {
   // Salva su Supabase
-  const result = await saveModuleToSupabase(module);
+  const result = await saveModuleToSupabase(module, courseId);
 
   if (!result.success) {
     console.warn('Failed to save to Supabase, using localStorage:', result.error);
@@ -42,15 +42,15 @@ export async function saveModule(module: ModuleJSON): Promise<void> {
   modulesCache = null;
 }
 
-// Ottieni tutti i moduli (da Supabase con fallback a localStorage)
-export async function getModules(): Promise<ModuleJSON[]> {
-  // Check cache
-  if (modulesCache && Date.now() - cacheTimestamp < CACHE_DURATION) {
+// Ottieni tutti i moduli (da Supabase con fallback a localStorage), filtrabili per corso
+export async function getModules(courseId?: string): Promise<ModuleJSON[]> {
+  // Check cache (skip se filtro per corso, la cache è globale)
+  if (!courseId && modulesCache && Date.now() - cacheTimestamp < CACHE_DURATION) {
     return modulesCache;
   }
 
   try {
-    const modules = await getModulesFromSupabase();
+    const modules = await getModulesFromSupabase(courseId);
     if (modules.length > 0) {
       modulesCache = modules;
       cacheTimestamp = Date.now();
