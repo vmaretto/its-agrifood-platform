@@ -20,10 +20,24 @@ Il JSON deve seguire ESATTAMENTE questa struttura:
       "articles": [],
       "links": [],
       "quiz": null,
-      "noteDocente": null
+      "noteDocente": {
+        "durata": "string es. '8-10 min'",
+        "obiettivi": ["string - obiettivo didattico 1", "string - obiettivo 2"],
+        "speech": "string - testo guida per il docente (cosa dire, come presentare, suggerimenti)",
+        "note": ["string - nota pratica per il docente"],
+        "domande": ["string - domanda da porre agli studenti per stimolare discussione"]
+      }
     }
   ]
 }
+
+## NOTE DOCENTE (noteDocente)
+OGNI slide DEVE avere noteDocente generate automaticamente dal contenuto. Includi:
+- **durata**: tempo stimato per presentare la slide (es. "8-10 min")
+- **obiettivi**: 2-3 obiettivi didattici specifici della slide
+- **speech**: testo guida per il docente (100-150 parole) con suggerimenti su come presentare, cosa enfatizzare, aneddoti da raccontare, domande retoriche da fare
+- **note**: 1-2 note pratiche (es. "Mostra il video prima di spiegare", "Fai fare un brainstorming")
+- **domande**: 1-2 domande da porre agli studenti per stimolare la discussione
 
 ## CATALOGO COMPONENTI VISIVI (visualContent)
 
@@ -122,6 +136,7 @@ Colori: "blue", "green", "yellow", "red", "purple"
 12. Video e articoli: includi quelli dal markdown originale con URL reali
 13. Contenuto in ITALIANO
 14. Il JSON deve essere valido e compatto
+15. **OGNI slide DEVE avere noteDocente** - genera speech, obiettivi, note e domande dal contenuto
 
 Rispondi SOLO con il JSON valido, senza markdown code blocks, senza commenti.`;
 
