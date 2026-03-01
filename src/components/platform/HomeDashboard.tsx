@@ -59,13 +59,19 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({
         }
 
         // Carica attività recenti (filtrate per team del corso)
-        const activities = await getRecentActivities(20);
-        if (courseId && teams.length > 0) {
-          const courseTeamIds = teams.map(t => t.id);
-          const filtered = activities.filter(a => a.team_id && courseTeamIds.includes(a.team_id));
-          setRecentActivities(filtered.slice(0, 5));
+        if (courseId) {
+          if (teams.length > 0) {
+            const activities = await getRecentActivities(20);
+            const courseTeamIds = teams.map(t => t.id);
+            const filtered = activities.filter(a => a.team_id && courseTeamIds.includes(a.team_id));
+            setRecentActivities(filtered.slice(0, 5));
+          } else {
+            // Corso senza squadre = nessuna attività da mostrare
+            setRecentActivities([]);
+          }
         } else {
-          setRecentActivities(activities.slice(0, 5));
+          const activities = await getRecentActivities(5);
+          setRecentActivities(activities);
         }
       } catch (err) {
         console.error('Error loading dashboard data:', err);
