@@ -47,7 +47,7 @@ interface StudentWithProgress {
   total_time_seconds: number;
 }
 
-const AdminDashboard = () => {
+const AdminDashboard = ({ courseId }: { courseId?: string }) => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [stats, setStats] = React.useState({
     studentsCount: 0,
@@ -86,7 +86,7 @@ const AdminDashboard = () => {
   const [selectedBadgeId, setSelectedBadgeId] = React.useState<string | null>(null);
   const [isAssigningBadge, setIsAssigningBadge] = React.useState(false);
 
-  // Carica tutti i dati da Supabase
+  // Carica tutti i dati da Supabase (filtrati per courseId)
   React.useEffect(() => {
     const loadData = async () => {
       setIsLoading(true);
@@ -96,72 +96,154 @@ const AdminDashboard = () => {
         const { getTeams } = await import('@/services/teamsService');
         const { getModules } = await import('@/services/moduliStorage');
 
-        // Conta studenti
-        const { count: studentsCount } = await supabase
-          .from('students')
-          .select('*', { count: 'exact', head: true });
+        // Carica squadre del corso
+        const teamsData = await getTeams(courseId);
+        setTeams(teamsData);
+        const courseTeamIds = teamsData.map(t => t.id);
 
-        // Conta moduli completati totali
-        const { count: modulesCompleted } = await supabase
-          .from('user_progress')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_completed', true);
+        // Carica moduli del corso
+        const modulesData = await getModules(courseId);
+        const courseModuleIds = modulesData.map(m => m.id);
 
-        // Conta quiz corretti
-        const { count: quizzesPassed } = await supabase
-          .from('student_quiz_scores')
-          .select('*', { count: 'exact', head: true })
-          .eq('is_correct', true);
+        // Conta studenti (filtrati per team del corso)
+        let studentsCount = 0;
+        if (courseId && courseTeamIds.length > 0) {
+          const { count } = await supabase
+            .from('students')
+            .select('*', { count: 'exact', head: true })
+            .in('team_id', courseTeamIds);
+          studentsCount = count || 0;
+        } else if (courseId) {
+          // Corso senza squadre = 0 studenti
+          studentsCount = 0;
+        } else {
+          const { count } = await supabase
+            .from('students')
+            .select('*', { count: 'exact', head: true });
+          studentsCount = count || 0;
+        }
 
-        // Conta slide viste totali e tempo totale
-        const { data: progressData } = await supabase
-          .from('user_progress')
-          .select('completed_slides, time_spent_seconds');
+        // Conta moduli completati (filtrati per moduli del corso)
+        let modulesCompletedCount = 0;
+        if (courseId && courseModuleIds.length > 0) {
+          const { count } = await supabase
+            .from('user_progress')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_completed', true)
+            .in('module_id', courseModuleIds);
+          modulesCompletedCount = count || 0;
+        } else if (courseId) {
+          modulesCompletedCount = 0;
+        } else {
+          const { count } = await supabase
+            .from('user_progress')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_completed', true);
+          modulesCompletedCount = count || 0;
+        }
 
+        // Conta quiz corretti (filtrati per moduli del corso)
+        let quizzesPassed = 0;
+        if (courseId && courseModuleIds.length > 0) {
+          const { count } = await supabase
+            .from('student_quiz_scores')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_correct', true)
+            .in('module_id', courseModuleIds);
+          quizzesPassed = count || 0;
+        } else if (courseId) {
+          quizzesPassed = 0;
+        } else {
+          const { count } = await supabase
+            .from('student_quiz_scores')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_correct', true);
+          quizzesPassed = count || 0;
+        }
+
+        // Conta slide viste totali e tempo totale (filtrate per moduli del corso)
         let totalSlides = 0;
         let totalTimeSeconds = 0;
-        if (progressData) {
-          for (const p of progressData) {
-            if (p.completed_slides && Array.isArray(p.completed_slides)) {
-              totalSlides += p.completed_slides.length;
+        if (courseId && courseModuleIds.length > 0) {
+          const { data: progressData } = await supabase
+            .from('user_progress')
+            .select('completed_slides, time_spent_seconds')
+            .in('module_id', courseModuleIds);
+          if (progressData) {
+            for (const p of progressData) {
+              if (p.completed_slides && Array.isArray(p.completed_slides)) {
+                totalSlides += p.completed_slides.length;
+              }
+              if (p.time_spent_seconds) {
+                totalTimeSeconds += p.time_spent_seconds;
+              }
             }
-            if (p.time_spent_seconds) {
-              totalTimeSeconds += p.time_spent_seconds;
+          }
+        } else if (!courseId) {
+          const { data: progressData } = await supabase
+            .from('user_progress')
+            .select('completed_slides, time_spent_seconds');
+          if (progressData) {
+            for (const p of progressData) {
+              if (p.completed_slides && Array.isArray(p.completed_slides)) {
+                totalSlides += p.completed_slides.length;
+              }
+              if (p.time_spent_seconds) {
+                totalTimeSeconds += p.time_spent_seconds;
+              }
             }
           }
         }
 
         setStats({
-          studentsCount: studentsCount || 0,
-          modulesCompleted: modulesCompleted || 0,
-          quizzesPassed: quizzesPassed || 0,
+          studentsCount,
+          modulesCompleted: modulesCompletedCount,
+          quizzesPassed,
           totalSlides,
           totalTimeSeconds
         });
-        setTotalStudents(studentsCount || 0);
+        setTotalStudents(studentsCount);
 
-        // Carica attività recenti
-        const activities = await getRecentActivities(10);
-        setRecentActivities(activities);
+        // Carica attività recenti (filtrate per team del corso)
+        if (courseId && courseTeamIds.length > 0) {
+          const activities = await getRecentActivities(20);
+          const filtered = activities.filter(a => a.team_id && courseTeamIds.includes(a.team_id));
+          setRecentActivities(filtered.slice(0, 10));
+        } else if (courseId) {
+          setRecentActivities([]);
+        } else {
+          const activities = await getRecentActivities(10);
+          setRecentActivities(activities);
+        }
 
-        // Carica classifica squadre
-        const teamsData = await getTeams();
-        setTeams(teamsData);
-
-        // Carica lista studenti dalla leaderboard (include già team_name, team_color, team_id, points)
-        const { data: leaderboardData } = await supabase
+        // Carica lista studenti dalla leaderboard (filtrata per team del corso)
+        let leaderboardQuery = supabase
           .from('students_leaderboard')
           .select('*')
           .order('points', { ascending: false });
 
+        if (courseId && courseTeamIds.length > 0) {
+          leaderboardQuery = leaderboardQuery.in('team_id', courseTeamIds);
+        } else if (courseId) {
+          // Corso senza team: nessuno studente
+          leaderboardQuery = leaderboardQuery.eq('team_id', 'no-match');
+        }
+
+        const { data: leaderboardData } = await leaderboardQuery;
+
         if (leaderboardData) {
-          // Per ogni studente, calcola i moduli completati e il tempo totale
           const studentsWithProgress: StudentWithProgress[] = await Promise.all(
             leaderboardData.map(async (s) => {
-              const { data: studentProgressData } = await supabase
+              let progressQuery = supabase
                 .from('user_progress')
                 .select('is_completed, time_spent_seconds')
                 .eq('user_id', s.id);
+
+              if (courseId && courseModuleIds.length > 0) {
+                progressQuery = progressQuery.in('module_id', courseModuleIds);
+              }
+
+              const { data: studentProgressData } = await progressQuery;
 
               let modulesCompleted = 0;
               let totalTime = 0;
@@ -176,7 +258,7 @@ const AdminDashboard = () => {
                 id: s.id,
                 first_name: s.first_name,
                 last_name: s.last_name,
-                email: '', // La leaderboard non ha email, ma non è usato nella UI
+                email: '',
                 points: s.points || 0,
                 team_id: s.team_id,
                 team_name: s.team_name,
@@ -190,7 +272,6 @@ const AdminDashboard = () => {
         }
 
         // Carica moduli con conteggio completamenti
-        const modulesData = await getModules();
         const modulesWithProgress = await Promise.all(
           modulesData.map(async (m) => {
             const { count } = await supabase
@@ -213,7 +294,7 @@ const AdminDashboard = () => {
       setIsLoading(false);
     };
     loadData();
-  }, []);
+  }, [courseId]);
 
   // Carica membri della squadra selezionata
   const handleTeamClick = async (team: import('@/services/teamsService').Team) => {
@@ -1802,7 +1883,7 @@ const ITSLearningPlatform: React.FC = () => {
       
       // Viste Admin
       case 'admin-dashboard':
-        return <AdminDashboard />;
+        return <AdminDashboard courseId={activeCourse?.id} />;
       case 'admin-contenuti':
         return <AdminContenuti setActiveModule={setActiveModule} onEditModule={handleEditModule} courseId={activeCourse?.id} />;
       case 'admin-squadre':
@@ -1837,7 +1918,7 @@ const ITSLearningPlatform: React.FC = () => {
       default:
         // Per admin/docenti, mostra direttamente la dashboard admin
         if (isAdmin) {
-          return <AdminDashboard />;
+          return <AdminDashboard courseId={activeCourse?.id} />;
         }
         return (
           <HomeDashboard
