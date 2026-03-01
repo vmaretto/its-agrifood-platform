@@ -58,9 +58,15 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({
           setProgressSummary(progress);
         }
 
-        // Carica attività recenti
-        const activities = await getRecentActivities(5);
-        setRecentActivities(activities);
+        // Carica attività recenti (filtrate per team del corso)
+        const activities = await getRecentActivities(20);
+        if (courseId && teams.length > 0) {
+          const courseTeamIds = teams.map(t => t.id);
+          const filtered = activities.filter(a => a.team_id && courseTeamIds.includes(a.team_id));
+          setRecentActivities(filtered.slice(0, 5));
+        } else {
+          setRecentActivities(activities.slice(0, 5));
+        }
       } catch (err) {
         console.error('Error loading dashboard data:', err);
       }
