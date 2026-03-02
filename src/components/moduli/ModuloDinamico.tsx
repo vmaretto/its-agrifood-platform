@@ -529,6 +529,12 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
   const [timeSpentSeconds, setTimeSpentSeconds] = useState<number>(0);
   const [earnedPoints, setEarnedPoints] = useState<number>(0);
 
+  // Test mode: traccia risposte quiz per punteggio finale
+  const isTestMode = module.tipo === 'test' || module.lockNavigation === true;
+  const [testAnswers, setTestAnswers] = useState<Record<number, { isCorrect: boolean; points: number }>>({});
+  const [showTestResults, setShowTestResults] = useState(false);
+  const [currentSlideAnswered, setCurrentSlideAnswered] = useState(false);
+
   // Stati per modal video
   const [showVideoModal, setShowVideoModal] = useState(false);
   const [editingVideo, setEditingVideo] = useState<{ video: VideoItem | null; index: number } | null>(null);
@@ -774,14 +780,20 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
   const goNext = () => {
     if (currentSlide < module.slides.length - 1) {
       setCurrentSlide(currentSlide + 1);
+      setCurrentSlideAnswered(false);
     }
   };
 
   const goPrev = () => {
+    if (isTestMode) return; // Blocca navigazione indietro in test mode
     if (currentSlide > 0) {
       setCurrentSlide(currentSlide - 1);
     }
   };
+
+  // In test mode, verifica se la slide corrente ha un quiz che deve essere risposto
+  const slideHasQuiz = !!(slide.quiz || slide.visualContent?.quiz);
+  const canAdvanceInTest = !isTestMode || !slideHasQuiz || currentSlideAnswered || testAnswers[slide.id];
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -921,6 +933,11 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
                     moduleId={module.id}
                     slideId={slide.id}
                     onAnswerSaved={async (isCorrect, points) => {
+                      // Track per test mode
+                      if (isTestMode) {
+                        setTestAnswers(prev => ({ ...prev, [slide.id]: { isCorrect, points } }));
+                        setCurrentSlideAnswered(true);
+                      }
                       if (currentUser?.id) {
                         // Salva nel progresso del modulo
                         await saveQuizProgress(currentUser.id, module.id, slide.id, points, isCorrect);
@@ -1029,29 +1046,60 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
 
         {/* Navigation Buttons */}
         <div className="flex justify-between mt-6">
-          <button
-            onClick={goPrev}
-            disabled={currentSlide === 0}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-colors ${
-              currentSlide === 0
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-white text-gray-700 hover:bg-gray-50 border'
-            }`}
-          >
-            ← Precedente
-          </button>
-          <button
-            onClick={goNext}
-            disabled={currentSlide === module.slides.length - 1}
-            className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-colors ${
-              currentSlide === module.slides.length - 1
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700'
-            }`}
-          >
-            Successiva →
-          </button>
+          {isTestMode ? (
+            <div className="text-sm text-gray-400 flex items-center gap-2">
+              🔒 Navigazione a senso unico
+            </div>
+          ) : (
+            <button
+              onClick={goPrev}
+              disabled={currentSlide === 0}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-colors ${
+                currentSlide === 0
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-white text-gray-700 hover:bg-gray-50 border'
+              }`}
+            >
+              ← Precedente
+            </button>
+          )}
+
+          {/* In test mode: ultima slide mostra "Vedi Risultati" */}
+          {isTestMode && currentSlide === module.slides.length - 1 ? (
+            <button
+              onClick={() => setShowTestResults(true)}
+              disabled={!canAdvanceInTest}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-colors ${
+                !canAdvanceInTest
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-emerald-600 text-white hover:bg-emerald-700'
+              }`}
+            >
+              📊 Vedi Risultati
+            </button>
+          ) : (
+            <button
+              onClick={goNext}
+              disabled={currentSlide === module.slides.length - 1 || (isTestMode && !canAdvanceInTest)}
+              className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-colors ${
+                currentSlide === module.slides.length - 1 || (isTestMode && !canAdvanceInTest)
+                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                  : 'bg-indigo-600 text-white hover:bg-indigo-700'
+              }`}
+            >
+              {isTestMode && !canAdvanceInTest ? '⚠️ Rispondi prima di proseguire' : 'Successiva →'}
+            </button>
+          )}
         </div>
+
+        {/* Test mode: avviso risposta obbligatoria */}
+        {isTestMode && slideHasQuiz && !canAdvanceInTest && (
+          <div className="mt-3 text-center">
+            <p className="text-sm text-amber-600 bg-amber-50 px-4 py-2 rounded-lg inline-block">
+              ⚠️ Devi rispondere alla domanda prima di passare alla successiva
+            </p>
+          </div>
+        )}
 
         {/* Pulsante Completa Modulo - solo per studenti sull'ultima slide */}
         {isStudentUser && currentSlide === module.slides.length - 1 && !moduleCompleted && (
@@ -1293,6 +1341,128 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
           <span>Salvataggio...</span>
         </div>
       )}
+
+      {/* Modal Risultati Test */}
+      {showTestResults && isTestMode && (() => {
+        const totalQuizSlides = module.slides.filter(s => s.quiz || s.visualContent?.quiz).length;
+        const answeredCount = Object.keys(testAnswers).length;
+        const correctCount = Object.values(testAnswers).filter(a => a.isCorrect).length;
+        const totalPoints = Object.values(testAnswers).reduce((sum, a) => sum + a.points, 0);
+        const percentage = totalQuizSlides > 0 ? Math.round((correctCount / totalQuizSlides) * 100) : 0;
+
+        let level = '', levelEmoji = '', levelColor = '', levelBg = '';
+        if (percentage >= 80) { level = 'Avanzato'; levelEmoji = '🟢'; levelColor = 'text-emerald-700'; levelBg = 'bg-emerald-50'; }
+        else if (percentage >= 55) { level = 'Intermedio'; levelEmoji = '🟡'; levelColor = 'text-yellow-700'; levelBg = 'bg-yellow-50'; }
+        else if (percentage >= 30) { level = 'Base'; levelEmoji = '🟠'; levelColor = 'text-orange-700'; levelBg = 'bg-orange-50'; }
+        else { level = 'Principiante'; levelEmoji = '🔴'; levelColor = 'text-red-700'; levelBg = 'bg-red-50'; }
+
+        return (
+          <>
+            <div className="fixed inset-0 bg-black/60 z-50" />
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg text-center" onClick={e => e.stopPropagation()}>
+                <div className="p-8">
+                  <div className="text-6xl mb-4">📊</div>
+                  <h2 className="text-2xl font-bold text-gray-800 mb-2">Risultati del Test</h2>
+                  <p className="text-gray-500 mb-6">{module.titolo}</p>
+
+                  {/* Punteggio principale */}
+                  <div className={`${levelBg} rounded-2xl p-6 mb-6`}>
+                    <div className="text-5xl font-black mb-2">
+                      <span className={levelColor}>{correctCount}</span>
+                      <span className="text-gray-400 text-3xl">/{totalQuizSlides}</span>
+                    </div>
+                    <div className={`text-lg font-bold ${levelColor} mb-1`}>
+                      {levelEmoji} Livello: {level}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      {percentage}% risposte corrette · {totalPoints} punti totalizzati
+                    </div>
+                  </div>
+
+                  {/* Barra progresso visiva */}
+                  <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden mb-6">
+                    <div
+                      className={`h-full rounded-full transition-all duration-1000 ${
+                        percentage >= 80 ? 'bg-emerald-500' :
+                        percentage >= 55 ? 'bg-yellow-500' :
+                        percentage >= 30 ? 'bg-orange-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+
+                  {/* Dettagli */}
+                  <div className="grid grid-cols-3 gap-3 mb-6">
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <div className="text-2xl font-bold text-emerald-600">{correctCount}</div>
+                      <div className="text-xs text-gray-500">Corrette</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <div className="text-2xl font-bold text-red-500">{answeredCount - correctCount}</div>
+                      <div className="text-xs text-gray-500">Errate</div>
+                    </div>
+                    <div className="bg-gray-50 rounded-xl p-3">
+                      <div className="text-2xl font-bold text-gray-400">{totalQuizSlides - answeredCount}</div>
+                      <div className="text-xs text-gray-500">Non risposte</div>
+                    </div>
+                  </div>
+
+                  {/* Messaggio */}
+                  <p className="text-sm text-gray-500 mb-6">
+                    {percentage >= 80 ? 'Ottima preparazione! Hai già una solida base di partenza.' :
+                     percentage >= 55 ? 'Buona base! Il corso ti aiuterà ad approfondire i temi meno familiari.' :
+                     percentage >= 30 ? 'Conosci le basi. Il corso partirà da zero e ti guiderà passo dopo passo.' :
+                     'Nessun problema! Il corso è pensato proprio per partire da zero e costruire le competenze insieme.'}
+                  </p>
+
+                  <button
+                    onClick={async () => {
+                      setShowTestResults(false);
+                      // Salva come completato
+                      if (currentUser?.id) {
+                        try {
+                          const elapsedSeconds = Math.round((Date.now() - moduleStartTime) / 1000);
+                          const { supabase } = await import('@/lib/supabase');
+                          const now = new Date().toISOString();
+                          await supabase.from('user_progress').upsert({
+                            user_id: currentUser.id,
+                            module_id: module.id,
+                            current_slide: module.slides.length,
+                            completed_slides: Array.from({ length: module.slides.length }, (_, i) => i + 1),
+                            quiz_scores: testAnswers,
+                            is_completed: true,
+                            completed_at: now,
+                            started_at: now,
+                            last_accessed_at: now,
+                            time_spent_seconds: elapsedSeconds
+                          }, { onConflict: 'user_id,module_id' });
+
+                          await supabase.from('bonus_points').insert([{
+                            student_id: currentUser.id,
+                            points: totalPoints,
+                            reason: `Test completato: ${module.titolo} (${correctCount}/${totalQuizSlides})`,
+                            assigned_by: 'system'
+                          }]);
+
+                          await logModuleCompleted(currentUser.id, module.id, module.titolo, totalPoints);
+                          await checkAndAwardBadges(currentUser.id);
+                        } catch (err) {
+                          console.error('Errore salvataggio risultati test:', err);
+                        }
+                      }
+                      onBack?.();
+                    }}
+                    className="w-full px-6 py-4 bg-indigo-600 text-white rounded-xl font-bold text-lg hover:bg-indigo-700 transition-colors"
+                  >
+                    ✅ Chiudi e Torna al Percorso
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {/* Modal Completamento Modulo */}
       {showCompletionModal && (

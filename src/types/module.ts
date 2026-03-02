@@ -375,7 +375,8 @@ export interface ModuleJSON {
   icon: string;
   createdAt?: string;
   courseId?: string;
-  tipo?: 'contenuto' | 'quiz' | 'case-study' | 'lab' | 'challenge' | 'hackathon';
+  tipo?: 'contenuto' | 'quiz' | 'case-study' | 'lab' | 'challenge' | 'hackathon' | 'test';
+  lockNavigation?: boolean;  // Se true, lo studente non può tornare indietro
   config?: HackathonConfig;
   slides: SlideJSON[];
 }

@@ -215,6 +215,52 @@ OGNI slide deve usare 2-3 componenti diversi. NON usare sempre gli stessi!
 
 Rispondi SOLO con il JSON valido, senza markdown code blocks, senza commenti.`;
 
+const SYSTEM_PROMPT_TEST = `Sei un esperto di design didattico per l'ITS AgriFood Academy. Trasforma il contenuto Markdown di un TEST/QUIZ in un modulo di valutazione interattivo in formato JSON.
+
+IMPORTANTE: Questo è un TEST con navigazione bloccata (non si può tornare indietro). Ogni slide DEVE contenere esattamente UN QUIZ.
+
+Il JSON deve seguire ESATTAMENTE questa struttura:
+
+{
+  "titolo": "string",
+  "descrizione": "string (1-2 frasi)",
+  "durata": "string es. '15-20 minuti'",
+  "icon": "📝",
+  "tipo": "test",
+  "lockNavigation": true,
+  "slides": [
+    {
+      "id": number (partendo da 1),
+      "section": "string - nome della sezione (es. 'Sezione 1: Agroalimentare')",
+      "title": "string - titolo della domanda (es. 'Domanda 1 di 20')",
+      "contenuto": "string - contesto breve opzionale (1 frase max, es. la sezione a cui appartiene)",
+      "quiz": {
+        "question": "string - la domanda completa",
+        "options": ["string opzione A", "string opzione B", "string opzione C", "string opzione D"],
+        "correctIndex": number (0-based, l'indice della risposta corretta),
+        "explanation": "string - spiegazione della risposta corretta"
+      },
+      "noteDocente": null
+    }
+  ]
+}
+
+## REGOLE PER IL TEST
+1. **UNA domanda per slide** - ogni slide ha esattamente un quiz
+2. **"tipo": "test"** e **"lockNavigation": true** sono OBBLIGATORI nel JSON root
+3. La prima slide può avere anche un "contenuto" con le istruzioni del test
+4. L'ordine delle domande segue il markdown originale
+5. "correctIndex" è 0-based: se la risposta corretta è la B, correctIndex = 1
+6. Mantieni l'ordine delle opzioni come nel markdown originale (A=0, B=1, C=2, D=3)
+7. "section" indica la sezione/area tematica (es. "Blockchain", "IoT", "AI")
+8. "title" deve indicare il numero della domanda (es. "Domanda 5 di 20")
+9. Non includere heroBanner, visualContent, video, articoli, links - solo quiz
+10. "noteDocente" deve essere null per tutti i test
+11. Contenuto in ITALIANO
+12. Il JSON deve essere valido e compatto
+
+Rispondi SOLO con il JSON valido, senza markdown code blocks, senza commenti.`;
+
 export async function POST(request: NextRequest) {
   try {
     const { markdown, speechMarkdown } = await request.json();
@@ -236,15 +282,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Costruisci il messaggio user in base alla presenza del speechMarkdown
-    let userMessage = `Ecco il contenuto Markdown da trasformare in un modulo didattico:\n\n${markdown}`;
+    // Detecta se è un test (cerca "Tipo: test" o "lockNavigation: true" nell'header)
+    const isTestMode = /\*\*Tipo:\*\*\s*test/i.test(markdown) || /\*\*lockNavigation:\*\*\s*true/i.test(markdown) || /^#.*test.*ingresso/im.test(markdown) || /^#.*test.*preliminare/im.test(markdown);
 
-    if (speechMarkdown) {
+    // Costruisci il messaggio user in base alla presenza del speechMarkdown
+    let userMessage = isTestMode
+      ? `Ecco il contenuto Markdown di un TEST DI VALUTAZIONE da trasformare in un modulo test interattivo:\n\n${markdown}`
+      : `Ecco il contenuto Markdown da trasformare in un modulo didattico:\n\n${markdown}`;
+
+    if (speechMarkdown && !isTestMode) {
       userMessage += `\n\n--- SPEECH MARKDOWN (Note Docente) ---\n\n${speechMarkdown}`;
     }
 
     // Scegli il prompt di sistema appropriato
-    const systemPrompt = speechMarkdown ? SYSTEM_PROMPT_WITH_SPEECH : SYSTEM_PROMPT;
+    const systemPrompt = isTestMode ? SYSTEM_PROMPT_TEST : (speechMarkdown ? SYSTEM_PROMPT_WITH_SPEECH : SYSTEM_PROMPT);
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -306,6 +357,11 @@ export async function POST(request: NextRequest) {
 
     try {
       const moduleData = JSON.parse(jsonString);
+      // Forza tipo e lockNavigation per i test
+      if (isTestMode) {
+        moduleData.tipo = 'test';
+        moduleData.lockNavigation = true;
+      }
       return NextResponse.json({ module: moduleData });
     } catch (parseError) {
       // Prova a fixare problemi comuni nel JSON
@@ -315,6 +371,11 @@ export async function POST(request: NextRequest) {
           .replace(/,\s*}/g, '}')
           .replace(/,\s*]/g, ']');
         const moduleData = JSON.parse(fixedJson);
+        // Forza tipo e lockNavigation per i test
+        if (isTestMode) {
+          moduleData.tipo = 'test';
+          moduleData.lockNavigation = true;
+        }
         return NextResponse.json({ module: moduleData });
       } catch {
         return NextResponse.json(
