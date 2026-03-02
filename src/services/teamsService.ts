@@ -18,6 +18,9 @@ export interface Student {
   id: string;
   first_name: string;
   last_name: string;
+  email?: string;
+  auth_id?: string;
+  role?: string;
   team_id: string | null;
   team_name?: string;
   team_color?: string;
@@ -212,13 +215,26 @@ export async function getStudent(id: string): Promise<Student | null> {
 }
 
 export async function createStudent(student: Omit<Student, 'id' | 'points' | 'team_name' | 'team_color' | 'created_at'>): Promise<Student | null> {
+  const insertData: Record<string, unknown> = {
+    first_name: student.first_name,
+    last_name: student.last_name,
+    team_id: student.team_id,
+    role: 'student'
+  };
+
+  // Aggiungi email se fornita (obbligatoria per admin-created students)
+  if (student.email) {
+    insertData.email = student.email;
+  }
+
+  // auth_id è opzionale per studenti creati dall'admin (non hanno account auth)
+  if (student.auth_id) {
+    insertData.auth_id = student.auth_id;
+  }
+
   const { data, error } = await supabase
     .from('students')
-    .insert([{
-      first_name: student.first_name,
-      last_name: student.last_name,
-      team_id: student.team_id
-    }])
+    .insert([insertData])
     .select()
     .single();
 

@@ -109,17 +109,19 @@ interface StudentModalProps {
   teams: Team[];
   isOpen: boolean;
   onClose: () => void;
-  onSave: (student: { first_name: string; last_name: string; team_id: string | null }) => void;
+  onSave: (student: { first_name: string; last_name: string; email?: string; team_id: string | null }) => void;
 }
 
 const StudentModal: React.FC<StudentModalProps> = ({ student, teams, isOpen, onClose, onSave }) => {
   const [firstName, setFirstName] = useState(student?.first_name || '');
   const [lastName, setLastName] = useState(student?.last_name || '');
+  const [email, setEmail] = useState(student?.email || '');
   const [teamId, setTeamId] = useState<string | null>(student?.team_id || null);
 
   useEffect(() => {
     setFirstName(student?.first_name || '');
     setLastName(student?.last_name || '');
+    setEmail(student?.email || '');
     setTeamId(student?.team_id || null);
   }, [student, isOpen]);
 
@@ -156,6 +158,17 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, teams, isOpen, onC
           </div>
 
           <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Es. marco.rossi@email.com"
+            />
+          </div>
+
+          <div>
             <label className="block text-sm font-medium text-gray-600 mb-1">Squadra</label>
             <select
               value={teamId || ''}
@@ -180,7 +193,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, teams, isOpen, onC
           <button
             onClick={() => {
               if (firstName.trim() && lastName.trim()) {
-                onSave({ first_name: firstName.trim(), last_name: lastName.trim(), team_id: teamId });
+                onSave({ first_name: firstName.trim(), last_name: lastName.trim(), email: email.trim() || undefined, team_id: teamId });
                 onClose();
               }
             }}
@@ -501,7 +514,7 @@ const AdminSquadre: React.FC<AdminSquadreProps> = ({ courseId }) => {
     setShowStudentModal(true);
   };
 
-  const handleSaveStudent = async (studentData: { first_name: string; last_name: string; team_id: string | null }) => {
+  const handleSaveStudent = async (studentData: { first_name: string; last_name: string; email?: string; team_id: string | null }) => {
     setIsSaving(true);
     if (editingStudent) {
       await updateStudent(editingStudent.id, studentData);
