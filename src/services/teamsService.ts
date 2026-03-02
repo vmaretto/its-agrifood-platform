@@ -154,7 +154,8 @@ export async function getStudents(courseId?: string): Promise<Student[]> {
     .order('points', { ascending: false });
 
   if (courseId) {
-    query = query.eq('course_id', courseId);
+    // Mostra studenti del corso (team con quel course_id) + studenti senza team
+    query = query.or(`course_id.eq.${courseId},team_id.is.null`);
   }
 
   const { data, error } = await query;

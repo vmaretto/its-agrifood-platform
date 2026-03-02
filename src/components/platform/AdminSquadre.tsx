@@ -724,7 +724,7 @@ const AdminSquadre: React.FC<AdminSquadreProps> = ({ courseId }) => {
       />
 
       <StudentModal
-        student={editingStudent ? { ...editingStudent, team_id: preselectedTeamId } : null}
+        student={editingStudent ? { ...editingStudent, team_id: preselectedTeamId } : (preselectedTeamId ? { first_name: '', last_name: '', email: '', team_id: preselectedTeamId } as Student : null)}
         teams={teams}
         isOpen={showStudentModal}
         onClose={() => setShowStudentModal(false)}
