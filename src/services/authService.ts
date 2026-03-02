@@ -42,7 +42,39 @@ export async function signUp(
       return { user: null, error: 'Errore durante la registrazione' };
     }
 
-    // 2. Crea profilo nella tabella students
+    // 2. Controlla se esiste già un profilo creato dall'admin (con email ma senza auth_id)
+    const { data: existingProfile } = await supabase
+      .from('students')
+      .select('*')
+      .eq('email', email)
+      .is('auth_id', null)
+      .single();
+
+    if (existingProfile) {
+      // Collega l'account Auth al profilo esistente creato dall'admin
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from('students')
+        .update({
+          auth_id: authData.user.id,
+          first_name: firstName || existingProfile.first_name,
+          last_name: lastName || existingProfile.last_name,
+        })
+        .eq('id', existingProfile.id)
+        .select()
+        .single();
+
+      if (updateError) {
+        console.error('Error linking profile:', updateError);
+        return { user: null, error: 'Errore durante il collegamento del profilo' };
+      }
+
+      return {
+        user: { ...updatedProfile, points: existingProfile.points || 0 } as UserProfile,
+        error: null
+      };
+    }
+
+    // 3. Nessun profilo esistente: crea nuovo profilo nella tabella students
     const { data: profileData, error: profileError } = await supabase
       .from('students')
       .insert([{
@@ -58,8 +90,6 @@ export async function signUp(
 
     if (profileError) {
       console.error('Error creating profile:', profileError);
-      // Se fallisce la creazione del profilo, proviamo a eliminare l'utente auth
-      // (in produzione si dovrebbe gestire meglio)
       return { user: null, error: 'Errore durante la creazione del profilo' };
     }
 
