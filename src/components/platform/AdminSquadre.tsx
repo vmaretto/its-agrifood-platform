@@ -128,7 +128,7 @@ const StudentModal: React.FC<StudentModalProps> = ({ student, teams, isOpen, onC
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
       <div className="bg-white rounded-2xl p-6 w-full max-w-md">
         <h2 className="text-xl font-bold text-gray-800 mb-4">
           {student ? 'Modifica Studente' : 'Nuovo Studente'}
@@ -592,7 +592,7 @@ const AdminSquadre: React.FC<AdminSquadreProps> = ({ courseId }) => {
   return (
     <div className="p-8">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 relative z-10">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">Gestione Squadre</h1>
           <p className="text-gray-500">
@@ -602,14 +602,14 @@ const AdminSquadre: React.FC<AdminSquadreProps> = ({ courseId }) => {
         </div>
         <div className="flex gap-3">
           <button
-            onClick={() => handleCreateStudent()}
-            className="px-4 py-2 bg-indigo-500 text-white rounded-lg font-medium hover:bg-indigo-600 transition-colors"
+            onClick={(e) => { e.stopPropagation(); handleCreateStudent(); }}
+            className="px-4 py-2 bg-indigo-500 text-white rounded-lg font-medium hover:bg-indigo-600 transition-colors cursor-pointer"
           >
             + Nuovo Studente
           </button>
           <button
-            onClick={handleCreateTeam}
-            className="px-4 py-2 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition-colors"
+            onClick={(e) => { e.stopPropagation(); handleCreateTeam(); }}
+            className="px-4 py-2 bg-emerald-500 text-white rounded-lg font-medium hover:bg-emerald-600 transition-colors cursor-pointer"
           >
             + Nuova Squadra
           </button>
@@ -693,22 +693,46 @@ const AdminSquadre: React.FC<AdminSquadreProps> = ({ courseId }) => {
       {/* Studenti senza squadra */}
       {allStudents.filter(s => !s.team_id).length > 0 && (
         <div className="mt-8 bg-white rounded-2xl p-6 shadow-sm">
-          <h3 className="font-semibold text-gray-800 mb-4">Studenti senza squadra</h3>
-          <div className="flex flex-wrap gap-3">
+          <h3 className="font-semibold text-gray-800 mb-4">
+            Studenti senza squadra ({allStudents.filter(s => !s.team_id).length})
+          </h3>
+          <div className="space-y-2">
             {allStudents.filter(s => !s.team_id).map((student) => (
-              <div key={student.id} className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg">
-                <span className="text-gray-700">{student.first_name} {student.last_name}</span>
-                <span className="text-xs text-gray-500">({student.points || 0} pt)</span>
-                <select
-                  value=""
-                  onChange={(e) => handleMoveStudent(student, e.target.value)}
-                  className="text-xs px-2 py-1 border rounded bg-white ml-2"
-                >
-                  <option value="">Assegna a...</option>
-                  {teams.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
+              <div key={student.id} className="flex items-center gap-3 px-4 py-3 bg-gray-50 rounded-xl">
+                <div className="w-9 h-9 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-medium text-sm">
+                  {student.first_name[0]}{student.last_name[0]}
+                </div>
+                <div className="flex-1">
+                  <span className="font-medium text-gray-700">{student.first_name} {student.last_name}</span>
+                  {student.email && <span className="text-xs text-gray-400 ml-2">{student.email}</span>}
+                  <span className="text-xs text-gray-500 ml-2">({student.points || 0} pt)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <select
+                    value=""
+                    onChange={(e) => handleMoveStudent(student, e.target.value)}
+                    className="text-xs px-2 py-1 border rounded-lg bg-white"
+                  >
+                    <option value="">Assegna a...</option>
+                    {teams.map((t) => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => handleEditStudent(student)}
+                    className="px-2 py-1 text-indigo-600 hover:bg-indigo-50 rounded text-sm transition-colors"
+                    title="Modifica studente"
+                  >
+                    Modifica
+                  </button>
+                  <button
+                    onClick={() => handleDeleteStudent(student)}
+                    className="px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm transition-colors"
+                    title="Elimina studente"
+                  >
+                    Elimina
+                  </button>
+                </div>
               </div>
             ))}
           </div>
