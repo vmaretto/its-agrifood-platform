@@ -43,7 +43,6 @@ export interface DbModule {
   description?: string;
   duration?: string;
   icon?: string;
-  section?: string; // Sezione per raggruppare moduli (es. "FoodTech Trend", "Blockchain")
   slides: unknown; // JSONB
   is_published: boolean;
   is_static: boolean;
