@@ -109,6 +109,10 @@ export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCanc
   const [errorMessage, setErrorMessage] = useState('');
   const [generatedModule, setGeneratedModule] = useState<ModuleJSON | null>(null);
 
+  // Section state
+  const [selectedSection, setSelectedSection] = useState('');
+  const AVAILABLE_SECTIONS = ['', 'FoodTech Trend', 'Blockchain', 'Sostenibilità', 'Marketing'];
+
   // Load existing module for editing (dynamic or static)
   useEffect(() => {
     if (editModuleId) {
@@ -490,8 +494,12 @@ export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCanc
 
   const saveGeneratedModule = async () => {
     if (generatedModule) {
-      await saveModule(generatedModule, courseId);
-      onModuleCreated?.(generatedModule);
+      const moduleToSave = {
+        ...generatedModule,
+        section: selectedSection || undefined
+      };
+      await saveModule(moduleToSave, courseId);
+      onModuleCreated?.(moduleToSave);
       resetForm();
     }
   };
@@ -1447,7 +1455,27 @@ Testo dello speech...
                   ))}
                 </div>
 
-                <div className="mt-6 flex gap-3">
+                {/* Section Selector */}
+                <div className="mt-6 mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    📂 Sezione (opzionale)
+                  </label>
+                  <select
+                    value={selectedSection}
+                    onChange={(e) => setSelectedSection(e.target.value)}
+                    className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    <option value="">Nessuna sezione</option>
+                    {AVAILABLE_SECTIONS.filter(s => s).map(section => (
+                      <option key={section} value={section}>{section}</option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    I moduli della stessa sezione saranno raggruppati nella vista percorso
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
                   <button
                     onClick={saveGeneratedModule}
                     className="flex-1 py-3 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition-colors"

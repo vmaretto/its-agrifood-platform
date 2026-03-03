@@ -10,6 +10,7 @@ import ModuloDinamico from '../moduli/ModuloDinamico';
 import ModuloHackathon from '../moduli/ModuloHackathon';
 import AdminNuovoModulo from './AdminNuovoModulo';
 import AdminSquadre from './AdminSquadre';
+import AdminIscrizioni from './AdminIscrizioni';
 import AuthPage from '../auth/AuthPage';
 import CourseSelector from './CourseSelector';
 import { getModules, getModuleSync, deleteModule, getModulesSync } from '@/services/moduliStorage';
@@ -1801,6 +1802,7 @@ const ITSLearningPlatform: React.FC = () => {
       <CourseSelector
         onSelectCourse={handleSelectCourse}
         userName={currentUser.first_name}
+        currentUser={currentUser}
       />
     );
   }
@@ -1888,6 +1890,8 @@ const ITSLearningPlatform: React.FC = () => {
         return <AdminContenuti setActiveModule={setActiveModule} onEditModule={handleEditModule} courseId={activeCourse?.id} />;
       case 'admin-squadre':
         return <AdminSquadre courseId={activeCourse?.id} />;
+      case 'admin-iscrizioni':
+        return <AdminIscrizioni courseId={activeCourse?.id} />;
       case 'admin-badge':
         return <AdminBadge />;
       case 'admin-hackathon':
