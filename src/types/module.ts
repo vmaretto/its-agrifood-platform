@@ -153,6 +153,21 @@ export interface QuoteItem {
   role?: string;
 }
 
+// Tipi per immagini
+export interface ImageItem {
+  src: string;
+  alt?: string;
+  caption?: string;
+  width?: number;
+  height?: number;
+}
+
+export interface ImageGalleryItem {
+  images: ImageItem[];
+  columns?: 1 | 2 | 3 | 4;
+  gap?: 'sm' | 'md' | 'lg';
+}
+
 export interface ESGItem {
   letter?: string;
   title?: string;
@@ -347,6 +362,11 @@ export interface VisualContent {
   trends?: ListItemContent[];
   themes?: ThemeItem[];
   wineList?: ListItemContent[];
+
+  // Immagini
+  heroImage?: ImageItem;
+  images?: ImageItem[];
+  imageGallery?: ImageGalleryItem;
 
   // Campi generici per estensibilità
   [key: string]: unknown;

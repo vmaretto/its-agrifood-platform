@@ -17,6 +17,7 @@ import { QuoteBlock } from './QuoteBlock';
 import { ParagraphBlock } from './ParagraphBlock';
 import { ESGSection } from './ESGSection';
 import { ThemesList } from './ThemesList';
+import { HeroImage, ImageList, ImageGallery } from './ImageBlock';
 
 interface VisualContentRendererProps {
   content: VisualContent;
@@ -33,6 +34,21 @@ export function VisualContentRenderer({ content }: VisualContentRendererProps) {
           description={content.heroDescription}
           banner={content.heroBanner}
         />
+      )}
+
+      {/* Hero Image se presente */}
+      {content.heroImage && (
+        <HeroImage image={content.heroImage} />
+      )}
+
+      {/* Galleria immagini se presente */}
+      {content.imageGallery && (
+        <ImageGallery gallery={content.imageGallery} />
+      )}
+
+      {/* Lista immagini se presente */}
+      {content.images && content.images.length > 0 && (
+        <ImageList images={content.images} />
       )}
 
       {/* Intro Paragraph se presente */}

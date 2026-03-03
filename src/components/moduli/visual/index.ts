@@ -19,3 +19,4 @@ export { QuoteBlock } from './QuoteBlock';
 export { ParagraphBlock } from './ParagraphBlock';
 export { ESGSection } from './ESGSection';
 export { ThemesList } from './ThemesList';
+export { SingleImage, HeroImage, ImageList, ImageGallery } from './ImageBlock';
