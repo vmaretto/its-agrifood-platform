@@ -14,6 +14,7 @@ function toDbModule(module: ModuleJSON, courseId?: string): Omit<DbModule, 'crea
     is_static: false,
     created_by: undefined,
     course_id: courseId || module.courseId,
+    section: module.section,
   };
 }
 
@@ -27,6 +28,7 @@ function toModuleJSON(dbModule: DbModule): ModuleJSON {
     icon: dbModule.icon || '',
     createdAt: dbModule.created_at,
     courseId: dbModule.course_id,
+    section: dbModule.section,
     slides: dbModule.slides as ModuleJSON['slides'],
   };
 }

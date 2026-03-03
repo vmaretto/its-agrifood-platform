@@ -395,6 +395,7 @@ export interface ModuleJSON {
   icon: string;
   createdAt?: string;
   courseId?: string;
+  section?: string;  // Sezione per raggruppare moduli (es. "FoodTech Trend", "Blockchain")
   tipo?: 'contenuto' | 'quiz' | 'case-study' | 'lab' | 'challenge' | 'hackathon' | 'test';
   lockNavigation?: boolean;  // Se true, lo studente non può tornare indietro
   config?: HackathonConfig;
