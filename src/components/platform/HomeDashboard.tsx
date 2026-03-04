@@ -271,8 +271,8 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({
         </div>
       </div>
 
-      {/* CTA Modulo in evidenza */}
-      <div className="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white">
+      {/* CTA Modulo in evidenza - Sticky */}
+      <div className="sticky bottom-4 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
         <div className="flex items-center justify-between">
           <div>
             <div className="text-sm opacity-80 mb-1">Inizia il tuo percorso</div>
