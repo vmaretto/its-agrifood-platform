@@ -878,10 +878,10 @@ const AdminDashboard = ({ courseId }: { courseId?: string }) => {
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md" onClick={e => e.stopPropagation()}>
               {/* Header */}
-              <div className="p-6 border-b bg-gradient-to-r from-emerald-500 to-teal-600">
+              <div className={`p-6 border-b bg-gradient-to-r ${bonusPoints >= 0 ? 'from-emerald-500 to-teal-600' : 'from-red-500 to-rose-600'}`}>
                 <div className="flex items-center justify-between">
                   <div className="text-white">
-                    <h2 className="text-xl font-bold">Assegna Bonus</h2>
+                    <h2 className="text-xl font-bold">{bonusPoints >= 0 ? '⭐ Assegna Bonus' : '⚠️ Assegna Malus'}</h2>
                     <p className="text-sm opacity-90">
                       {bonusStudent.first_name} {bonusStudent.last_name}
                       {bonusStudent.team_name && ` - ${bonusStudent.team_name}`}
@@ -903,10 +903,12 @@ const AdminDashboard = ({ courseId }: { courseId?: string }) => {
                   <input
                     type="number"
                     value={bonusPoints}
-                    onChange={(e) => setBonusPoints(Math.max(1, parseInt(e.target.value) || 0))}
-                    min={1}
+                    onChange={(e) => setBonusPoints(parseInt(e.target.value) || 0)}
+                    min={-100}
+                    max={100}
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   />
+                  <p className="text-xs text-gray-500 mt-1">Usa valori negativi per i malus (penalità)</p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Motivazione *</label>
@@ -919,8 +921,8 @@ const AdminDashboard = ({ courseId }: { courseId?: string }) => {
                   />
                 </div>
                 {bonusStudent.team_name && (
-                  <div className="p-3 bg-blue-50 rounded-lg text-sm text-blue-700">
-                    I punti verranno assegnati anche alla squadra <strong>{bonusStudent.team_name}</strong>
+                  <div className={`p-3 rounded-lg text-sm ${bonusPoints >= 0 ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}`}>
+                    I punti verranno {bonusPoints >= 0 ? 'assegnati' : 'sottratti'} anche alla squadra <strong>{bonusStudent.team_name}</strong>
                   </div>
                 )}
               </div>
@@ -935,10 +937,18 @@ const AdminDashboard = ({ courseId }: { courseId?: string }) => {
                 </button>
                 <button
                   onClick={handleAssignBonus}
-                  disabled={isAssigningBonus || !bonusReason.trim() || bonusPoints <= 0}
-                  className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={isAssigningBonus || !bonusReason.trim() || bonusPoints === 0}
+                  className={`flex-1 px-4 py-2 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
+                    bonusPoints >= 0 
+                      ? 'bg-emerald-600 hover:bg-emerald-700' 
+                      : 'bg-red-600 hover:bg-red-700'
+                  }`}
                 >
-                  {isAssigningBonus ? 'Assegnazione...' : `Assegna +${bonusPoints} pt`}
+                  {isAssigningBonus 
+                    ? 'Assegnazione...' 
+                    : bonusPoints >= 0 
+                      ? `Assegna +${bonusPoints} pt` 
+                      : `Applica ${bonusPoints} pt`}
                 </button>
               </div>
             </div>
