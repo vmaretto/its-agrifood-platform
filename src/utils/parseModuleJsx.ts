@@ -339,6 +339,7 @@ function normalizeModule(input: unknown): ModuleJSON {
     durata: (data.durata as string) || (data.duration as string) || '',
     icon: (data.icon as string) || '',
     createdAt: (data.createdAt as string) || new Date().toISOString(),
+    ...(data.section ? { section: data.section as string } : {}),
     slides: normalizedSlides,
   };
 }

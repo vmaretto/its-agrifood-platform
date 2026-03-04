@@ -31,8 +31,10 @@ interface SectionGroup {
 const SECTION_CONFIG: Record<string, { icon: string; color: string; order: number }> = {
   'FoodTech Trend': { icon: '🚀', color: 'from-purple-500 to-indigo-600', order: 1 },
   'Blockchain': { icon: '⛓️', color: 'from-blue-500 to-cyan-600', order: 2 },
-  'Sostenibilità': { icon: '🌱', color: 'from-green-500 to-emerald-600', order: 3 },
-  'Marketing': { icon: '📣', color: 'from-orange-500 to-red-600', order: 4 },
+  'IoT': { icon: '📡', color: 'from-teal-500 to-emerald-600', order: 3 },
+  'RA e RV': { icon: '🥽', color: 'from-violet-500 to-purple-600', order: 4 },
+  'Sostenibilità': { icon: '🌱', color: 'from-green-500 to-emerald-600', order: 5 },
+  'Marketing': { icon: '📣', color: 'from-orange-500 to-red-600', order: 6 },
   'default': { icon: '📚', color: 'from-gray-500 to-gray-600', order: 99 }
 };
 
@@ -110,7 +112,7 @@ const PercorsoView: React.FC<PercorsoViewProps> = ({ setActiveModule, currentUse
   // Raggruppa i moduli per sezione
   const groupModulesBySection = (modules: Modulo[]): SectionGroup[] => {
     const groups: Record<string, Modulo[]> = {};
-    
+
     modules.forEach(mod => {
       const sectionName = mod.section || 'Moduli Generali';
       if (!groups[sectionName]) {
@@ -286,18 +288,18 @@ const PercorsoView: React.FC<PercorsoViewProps> = ({ setActiveModule, currentUse
                 {/* Barra progresso sezione */}
                 <div className="mt-4">
                   <div className="h-2 bg-white/30 rounded-full overflow-hidden">
-                    <div 
+                    <div
                       className="h-full bg-white rounded-full transition-all"
-                      style={{ 
-                        width: `${section.modules.length > 0 
-                          ? (section.modules.filter(m => m.stato === 'completato').length / section.modules.length) * 100 
-                          : 0}%` 
+                      style={{
+                        width: `${section.modules.length > 0
+                          ? (section.modules.filter(m => m.stato === 'completato').length / section.modules.length) * 100
+                          : 0}%`
                       }}
                     />
                   </div>
                 </div>
               </div>
-              
+
               {/* Moduli della sezione */}
               <div className="p-4">
                 <div className="space-y-2">
