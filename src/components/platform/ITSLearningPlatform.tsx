@@ -361,7 +361,7 @@ const AdminDashboard = ({ courseId }: { courseId?: string }) => {
 
   // Assegna bonus allo studente
   const handleAssignBonus = async () => {
-    if (!bonusStudent || bonusPoints <= 0 || !bonusReason.trim()) return;
+    if (!bonusStudent || bonusPoints === 0 || !bonusReason.trim()) return;
 
     setIsAssigningBonus(true);
     try {
