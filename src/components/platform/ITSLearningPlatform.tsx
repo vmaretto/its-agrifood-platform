@@ -12,6 +12,7 @@ import AdminNuovoModulo from './AdminNuovoModulo';
 import AdminSquadre from './AdminSquadre';
 import AdminIscrizioni from './AdminIscrizioni';
 import AdminHackathonConfig from './AdminHackathonConfig';
+import AdminPunteggi from './AdminPunteggi';
 import AuthPage from '../auth/AuthPage';
 import CourseSelector from './CourseSelector';
 import { getModules, getModuleSync, deleteModule, getModulesSync } from '@/services/moduliStorage';
@@ -1920,6 +1921,13 @@ const ITSLearningPlatform: React.FC = () => {
       case 'admin-hackathon-config':
         return (
           <AdminHackathonConfig
+            courseId={activeCourse?.id}
+            onBack={() => setCurrentView('admin-dashboard')}
+          />
+        );
+      case 'admin-punteggi':
+        return (
+          <AdminPunteggi
             courseId={activeCourse?.id}
             onBack={() => setCurrentView('admin-dashboard')}
           />
