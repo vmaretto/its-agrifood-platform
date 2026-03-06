@@ -47,6 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'admin-nuovo-modulo', icon: '🚀', label: 'Nuovo Modulo' },
     { id: 'admin-squadre', icon: '👥', label: 'Squadre' },
     { id: 'admin-iscrizioni', icon: '📋', label: 'Iscrizioni' },
+    { id: 'admin-scoreboard', icon: '🏅', label: 'Scoreboard' },
     { id: 'admin-badge', icon: '🎖️', label: 'Badge' },
     { id: 'admin-hackathon', icon: '💡', label: 'Hackathon' },
     { id: 'admin-hackathon-config', icon: '⏱️', label: 'Countdown' },

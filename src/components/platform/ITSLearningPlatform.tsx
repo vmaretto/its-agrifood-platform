@@ -12,6 +12,7 @@ import AdminNuovoModulo from './AdminNuovoModulo';
 import AdminSquadre from './AdminSquadre';
 import AdminIscrizioni from './AdminIscrizioni';
 import AdminHackathonConfig from './AdminHackathonConfig';
+import AdminScoreboard from './AdminScoreboard';
 import AuthPage from '../auth/AuthPage';
 import CourseSelector from './CourseSelector';
 import { getModules, getModuleSync, deleteModule, getModulesSync } from '@/services/moduliStorage';
@@ -1905,6 +1906,13 @@ const ITSLearningPlatform: React.FC = () => {
         return <AdminSquadre courseId={activeCourse?.id} />;
       case 'admin-iscrizioni':
         return <AdminIscrizioni courseId={activeCourse?.id} />;
+      case 'admin-scoreboard':
+        return (
+          <AdminScoreboard
+            courseId={activeCourse?.id}
+            onBack={() => setCurrentView('admin-dashboard')}
+          />
+        );
       case 'admin-badge':
         return <AdminBadge />;
       case 'admin-hackathon':
