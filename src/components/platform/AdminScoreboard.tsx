@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 
-type TabType = 'students' | 'teams' | 'bonuses';
+type TabType = 'students' | 'teams' | 'bonuses' | 'verify';
 
 interface Student {
   id: string;
@@ -14,6 +14,7 @@ interface Student {
   team_name: string | null;
   team_color: string | null;
   total_points: number;
+  bonuses: BonusDetail[];
 }
 
 interface Team {
@@ -23,7 +24,19 @@ interface Team {
   member_count: number;
   student_points: number;
   team_bonus: number;
-  total_points: number;
+  calculated_total: number;
+  leaderboard_total: number;
+  has_discrepancy: boolean;
+  members: { id: string; name: string; points: number }[];
+  team_bonuses: BonusDetail[];
+}
+
+interface BonusDetail {
+  id: string;
+  points: number;
+  reason: string;
+  assigned_by: string;
+  assigned_at: string;
 }
 
 interface Bonus {
@@ -44,7 +57,7 @@ interface AdminScoreboardProps {
 }
 
 export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('students');
+  const [activeTab, setActiveTab] = useState<TabType>('teams');
   const [students, setStudents] = useState<Student[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [bonuses, setBonuses] = useState<Bonus[]>([]);
@@ -52,6 +65,8 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<'all' | 'student' | 'team'>('all');
+  const [expandedTeam, setExpandedTeam] = useState<string | null>(null);
+  const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -64,13 +79,9 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
   };
 
   const loadStudents = async () => {
-    // Carica tutti gli studenti del corso
     let query = supabase
       .from('students')
-      .select(`
-        id, first_name, last_name, email, team_id,
-        teams!left(name, color)
-      `);
+      .select(`id, first_name, last_name, email, team_id, teams!left(name, color)`);
     
     if (courseId) {
       query = query.eq('course_id', courseId);
@@ -79,14 +90,14 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
     const { data: studentsData } = await query;
     if (!studentsData) return;
 
-    // Per ogni studente, calcola i punti totali dai bonus
     const studentsWithPoints: Student[] = [];
     
     for (const student of studentsData) {
       const { data: bonusData } = await supabase
         .from('bonus_points')
-        .select('points')
-        .eq('student_id', student.id);
+        .select('id, points, reason, assigned_by, assigned_at')
+        .eq('student_id', student.id)
+        .order('assigned_at', { ascending: false });
       
       const totalPoints = bonusData?.reduce((sum, b) => sum + b.points, 0) || 0;
       
@@ -98,17 +109,17 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
         team_id: student.team_id,
         team_name: (student.teams as any)?.name || null,
         team_color: (student.teams as any)?.color || null,
-        total_points: totalPoints
+        total_points: totalPoints,
+        bonuses: bonusData || []
       });
     }
 
-    // Ordina per punteggio
     studentsWithPoints.sort((a, b) => b.total_points - a.total_points);
     setStudents(studentsWithPoints);
   };
 
   const loadTeams = async () => {
-    // Carica squadre dalla leaderboard view
+    // Carica dalla leaderboard view (questa è la "verità" mostrata agli utenti)
     let query = supabase.from('teams_leaderboard').select('*');
     if (courseId) {
       query = query.eq('course_id', courseId);
@@ -117,33 +128,46 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
 
     if (!leaderboardData) return;
 
-    // Per ogni squadra, calcola separatamente punti studenti e bonus squadra
     const teamsWithBreakdown: Team[] = [];
 
     for (const team of leaderboardData) {
       // Bonus direttamente alla squadra
       const { data: teamBonusData } = await supabase
         .from('bonus_points')
-        .select('points')
-        .eq('team_id', team.id);
+        .select('id, points, reason, assigned_by, assigned_at')
+        .eq('team_id', team.id)
+        .order('assigned_at', { ascending: false });
       
       const teamBonus = teamBonusData?.reduce((sum, b) => sum + b.points, 0) || 0;
 
-      // Studenti della squadra
-      const { data: students } = await supabase
+      // Studenti della squadra con i loro punti
+      const { data: teamStudents } = await supabase
         .from('students')
-        .select('id')
+        .select('id, first_name, last_name')
         .eq('team_id', team.id);
 
+      const members: { id: string; name: string; points: number }[] = [];
       let studentPoints = 0;
-      if (students && students.length > 0) {
-        const studentIds = students.map(s => s.id);
-        const { data: studentBonusData } = await supabase
-          .from('bonus_points')
-          .select('points')
-          .in('student_id', studentIds);
-        studentPoints = studentBonusData?.reduce((sum, b) => sum + b.points, 0) || 0;
+
+      if (teamStudents && teamStudents.length > 0) {
+        for (const student of teamStudents) {
+          const { data: studentBonusData } = await supabase
+            .from('bonus_points')
+            .select('points')
+            .eq('student_id', student.id);
+          
+          const pts = studentBonusData?.reduce((sum, b) => sum + b.points, 0) || 0;
+          studentPoints += pts;
+          members.push({
+            id: student.id,
+            name: `${student.first_name} ${student.last_name}`,
+            points: pts
+          });
+        }
       }
+
+      const calculatedTotal = studentPoints + teamBonus;
+      const leaderboardTotal = team.points || 0;
 
       teamsWithBreakdown.push({
         id: team.id,
@@ -152,16 +176,19 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
         member_count: team.member_count || 0,
         student_points: studentPoints,
         team_bonus: teamBonus,
-        total_points: studentPoints + teamBonus
+        calculated_total: calculatedTotal,
+        leaderboard_total: leaderboardTotal,
+        has_discrepancy: calculatedTotal !== leaderboardTotal,
+        members: members.sort((a, b) => b.points - a.points),
+        team_bonuses: teamBonusData || []
       });
     }
 
-    teamsWithBreakdown.sort((a, b) => b.total_points - a.total_points);
+    teamsWithBreakdown.sort((a, b) => b.calculated_total - a.calculated_total);
     setTeams(teamsWithBreakdown);
   };
 
   const loadBonuses = async () => {
-    // Carica tutti i bonus
     const { data: bonusData } = await supabase
       .from('bonus_points')
       .select('*')
@@ -169,7 +196,6 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
 
     if (!bonusData) return;
 
-    // Carica nomi studenti e squadre
     const studentIds = Array.from(new Set(bonusData.filter(b => b.student_id).map(b => b.student_id)));
     const teamIds = Array.from(new Set(bonusData.filter(b => b.team_id).map(b => b.team_id)));
 
@@ -198,17 +224,14 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
       );
     }
 
-    // Filtra per corso se specificato
     let filteredBonuses = bonusData;
     if (courseId) {
-      // Ottieni gli ID studenti del corso
       const { data: courseStudents } = await supabase
         .from('students')
         .select('id')
         .eq('course_id', courseId);
       const courseStudentIds = new Set(courseStudents?.map(s => s.id) || []);
 
-      // Ottieni gli ID squadre del corso
       const { data: courseTeams } = await supabase
         .from('teams')
         .select('id')
@@ -256,7 +279,6 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
     });
   };
 
-  // Filtra bonus
   const filteredBonuses = bonuses.filter(b => {
     const matchesSearch = searchQuery === '' || 
       b.reason.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -270,10 +292,15 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
     return matchesSearch && matchesType;
   });
 
-  const tabs: { id: TabType; label: string; icon: string; count: number }[] = [
-    { id: 'students', label: 'Studenti', icon: '👤', count: students.length },
+  const discrepancyCount = teams.filter(t => t.has_discrepancy).length;
+  const totalCalculated = teams.reduce((sum, t) => sum + t.calculated_total, 0);
+  const totalLeaderboard = teams.reduce((sum, t) => sum + t.leaderboard_total, 0);
+
+  const tabs: { id: TabType; label: string; icon: string; count?: number; alert?: boolean }[] = [
     { id: 'teams', label: 'Squadre', icon: '🏆', count: teams.length },
-    { id: 'bonuses', label: 'Bonus', icon: '🎁', count: bonuses.length }
+    { id: 'students', label: 'Studenti', icon: '👤', count: students.length },
+    { id: 'bonuses', label: 'Bonus', icon: '🎁', count: bonuses.length },
+    { id: 'verify', label: 'Verifica', icon: '🔍', alert: discrepancyCount > 0 }
   ];
 
   if (isLoading) {
@@ -312,29 +339,206 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6 flex-wrap">
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-6 py-3 rounded-xl font-medium transition-all ${
+            className={`px-6 py-3 rounded-xl font-medium transition-all relative ${
               activeTab === tab.id
                 ? 'bg-indigo-600 text-white shadow-lg'
                 : 'bg-white text-gray-600 hover:bg-gray-50'
             }`}
           >
             {tab.icon} {tab.label}
-            <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
-              activeTab === tab.id ? 'bg-indigo-500' : 'bg-gray-100'
-            }`}>
-              {tab.count}
-            </span>
+            {tab.count !== undefined && (
+              <span className={`ml-2 px-2 py-0.5 rounded-full text-xs ${
+                activeTab === tab.id ? 'bg-indigo-500' : 'bg-gray-100'
+              }`}>
+                {tab.count}
+              </span>
+            )}
+            {tab.alert && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">
+                !
+              </span>
+            )}
           </button>
         ))}
       </div>
 
       {/* Tab Content */}
       <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+
+        {/* TEAMS TAB */}
+        {activeTab === 'teams' && (
+          <div>
+            {/* Summary */}
+            <div className="p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border-b">
+              <div className="flex gap-8 justify-center">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-indigo-600">{teams.length}</div>
+                  <div className="text-sm text-gray-500">Squadre</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-emerald-600">{totalCalculated}</div>
+                  <div className="text-sm text-gray-500">Punti totali</div>
+                </div>
+                {discrepancyCount > 0 && (
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-red-600">{discrepancyCount}</div>
+                    <div className="text-sm text-gray-500">Discrepanze</div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-600">#</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-600">Squadra</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-600">Membri</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">Punti Studenti</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">Bonus Squadra</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">Totale</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-600">Dettagli</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teams.map((team, idx) => (
+                    <React.Fragment key={team.id}>
+                      <tr className={`border-t hover:bg-gray-50 ${team.has_discrepancy ? 'bg-red-50' : ''}`}>
+                        <td className="py-3 px-4">
+                          <span 
+                            className="inline-flex items-center justify-center w-10 h-10 rounded-full text-white font-bold"
+                            style={{ backgroundColor: team.color }}
+                          >
+                            {idx + 1}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="font-bold text-gray-800">{team.name}</div>
+                          {team.has_discrepancy && (
+                            <div className="text-xs text-red-600">⚠️ Discrepanza rilevata</div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">
+                            {team.member_count} 👤
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-right text-gray-600 font-medium">
+                          {team.student_points}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          {team.team_bonus > 0 ? (
+                            <span className="text-emerald-600 font-medium">+{team.team_bonus}</span>
+                          ) : team.team_bonus < 0 ? (
+                            <span className="text-red-600 font-medium">{team.team_bonus}</span>
+                          ) : (
+                            <span className="text-gray-400">0</span>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right">
+                          <span className="text-2xl font-bold" style={{ color: team.color }}>
+                            {team.calculated_total}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            onClick={() => setExpandedTeam(expandedTeam === team.id ? null : team.id)}
+                            className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm"
+                          >
+                            {expandedTeam === team.id ? '▲ Chiudi' : '▼ Espandi'}
+                          </button>
+                        </td>
+                      </tr>
+                      {expandedTeam === team.id && (
+                        <tr>
+                          <td colSpan={7} className="bg-gray-50 p-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              {/* Membri */}
+                              <div>
+                                <h4 className="font-bold text-gray-700 mb-2">👤 Membri ({team.members.length})</h4>
+                                {team.members.length > 0 ? (
+                                  <table className="w-full text-sm">
+                                    <tbody>
+                                      {team.members.map(m => (
+                                        <tr key={m.id} className="border-b">
+                                          <td className="py-1">{m.name}</td>
+                                          <td className="py-1 text-right font-bold text-indigo-600">{m.points}</td>
+                                        </tr>
+                                      ))}
+                                      <tr className="font-bold bg-gray-100">
+                                        <td className="py-1">Totale studenti</td>
+                                        <td className="py-1 text-right">{team.student_points}</td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                ) : (
+                                  <div className="text-gray-400 italic">Nessun membro</div>
+                                )}
+                              </div>
+                              {/* Bonus squadra */}
+                              <div>
+                                <h4 className="font-bold text-gray-700 mb-2">🎁 Bonus Squadra ({team.team_bonuses.length})</h4>
+                                {team.team_bonuses.length > 0 ? (
+                                  <table className="w-full text-sm">
+                                    <tbody>
+                                      {team.team_bonuses.map(b => (
+                                        <tr key={b.id} className="border-b">
+                                          <td className="py-1 max-w-xs truncate" title={b.reason}>{b.reason}</td>
+                                          <td className="py-1 text-right font-bold text-emerald-600">+{b.points}</td>
+                                          <td className="py-1 text-right">
+                                            <button
+                                              onClick={() => deleteBonus(b.id)}
+                                              className="text-red-500 hover:text-red-700"
+                                            >
+                                              🗑️
+                                            </button>
+                                          </td>
+                                        </tr>
+                                      ))}
+                                      <tr className="font-bold bg-gray-100">
+                                        <td className="py-1">Totale bonus</td>
+                                        <td className="py-1 text-right">{team.team_bonus}</td>
+                                        <td></td>
+                                      </tr>
+                                    </tbody>
+                                  </table>
+                                ) : (
+                                  <div className="text-gray-400 italic">Nessun bonus diretto</div>
+                                )}
+                              </div>
+                            </div>
+                            {/* Riepilogo calcolo */}
+                            <div className="mt-4 p-3 bg-white rounded-lg border">
+                              <div className="flex items-center justify-between">
+                                <div className="text-sm text-gray-600">
+                                  <strong>Calcolo:</strong> {team.student_points} (studenti) + {team.team_bonus} (bonus) = <strong>{team.calculated_total}</strong>
+                                </div>
+                                {team.has_discrepancy ? (
+                                  <div className="text-red-600 font-bold">
+                                    ⚠️ Leaderboard mostra: {team.leaderboard_total} (differenza: {team.leaderboard_total - team.calculated_total})
+                                  </div>
+                                ) : (
+                                  <div className="text-emerald-600 font-bold">✅ Corretto</div>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
         {/* STUDENTS TAB */}
         {activeTab === 'students' && (
           <div className="overflow-x-auto">
@@ -346,100 +550,106 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
                   <th className="text-left py-3 px-4 font-semibold text-gray-600">Email</th>
                   <th className="text-left py-3 px-4 font-semibold text-gray-600">Squadra</th>
                   <th className="text-right py-3 px-4 font-semibold text-gray-600">Punti</th>
+                  <th className="text-center py-3 px-4 font-semibold text-gray-600">Dettagli</th>
                 </tr>
               </thead>
               <tbody>
                 {students.map((student, idx) => (
-                  <tr key={student.id} className="border-t hover:bg-gray-50">
-                    <td className="py-3 px-4">
-                      <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
-                        idx === 0 ? 'bg-yellow-100 text-yellow-700' :
-                        idx === 1 ? 'bg-gray-100 text-gray-700' :
-                        idx === 2 ? 'bg-amber-100 text-amber-700' :
-                        'bg-gray-50 text-gray-500'
-                      }`}>
-                        {idx + 1}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-medium text-gray-800">
-                      {student.first_name} {student.last_name}
-                    </td>
-                    <td className="py-3 px-4 text-gray-500 text-sm">
-                      {student.email}
-                    </td>
-                    <td className="py-3 px-4">
-                      {student.team_name ? (
-                        <span 
-                          className="px-3 py-1 rounded-full text-sm text-white"
-                          style={{ backgroundColor: student.team_color || '#6B7280' }}
-                        >
-                          {student.team_name}
+                  <React.Fragment key={student.id}>
+                    <tr className="border-t hover:bg-gray-50">
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold ${
+                          idx === 0 ? 'bg-yellow-100 text-yellow-700' :
+                          idx === 1 ? 'bg-gray-100 text-gray-700' :
+                          idx === 2 ? 'bg-amber-100 text-amber-700' :
+                          'bg-gray-50 text-gray-500'
+                        }`}>
+                          {idx + 1}
                         </span>
-                      ) : (
-                        <span className="text-gray-400 italic">Nessuna</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <span className="text-xl font-bold text-indigo-600">
-                        {student.total_points}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* TEAMS TAB */}
-        {activeTab === 'teams' && (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-600">#</th>
-                  <th className="text-left py-3 px-4 font-semibold text-gray-600">Squadra</th>
-                  <th className="text-center py-3 px-4 font-semibold text-gray-600">Membri</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-600">Punti Studenti</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-600">Bonus Squadra</th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-600">Totale</th>
-                </tr>
-              </thead>
-              <tbody>
-                {teams.map((team, idx) => (
-                  <tr key={team.id} className="border-t hover:bg-gray-50">
-                    <td className="py-3 px-4">
-                      <span 
-                        className="inline-flex items-center justify-center w-10 h-10 rounded-full text-white font-bold"
-                        style={{ backgroundColor: team.color }}
-                      >
-                        {idx + 1}
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 font-bold text-gray-800">
-                      {team.name}
-                    </td>
-                    <td className="py-3 px-4 text-center">
-                      <span className="px-3 py-1 bg-gray-100 rounded-full text-sm">
-                        {team.member_count} 👤
-                      </span>
-                    </td>
-                    <td className="py-3 px-4 text-right text-gray-600">
-                      {team.student_points}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      {team.team_bonus > 0 ? (
-                        <span className="text-emerald-600 font-medium">+{team.team_bonus}</span>
-                      ) : (
-                        <span className="text-gray-400">0</span>
-                      )}
-                    </td>
-                    <td className="py-3 px-4 text-right">
-                      <span className="text-2xl font-bold" style={{ color: team.color }}>
-                        {team.total_points}
-                      </span>
-                    </td>
-                  </tr>
+                      </td>
+                      <td className="py-3 px-4 font-medium text-gray-800">
+                        {student.first_name} {student.last_name}
+                      </td>
+                      <td className="py-3 px-4 text-gray-500 text-sm">
+                        {student.email}
+                      </td>
+                      <td className="py-3 px-4">
+                        {student.team_name ? (
+                          <span 
+                            className="px-3 py-1 rounded-full text-sm text-white"
+                            style={{ backgroundColor: student.team_color || '#6B7280' }}
+                          >
+                            {student.team_name}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 italic">Nessuna</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <span className="text-xl font-bold text-indigo-600">
+                          {student.total_points}
+                        </span>
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        <button
+                          onClick={() => setExpandedStudent(expandedStudent === student.id ? null : student.id)}
+                          className="px-3 py-1 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm"
+                        >
+                          {expandedStudent === student.id ? '▲' : '▼'} {student.bonuses.length}
+                        </button>
+                      </td>
+                    </tr>
+                    {expandedStudent === student.id && (
+                      <tr>
+                        <td colSpan={6} className="bg-gray-50 p-4">
+                          <h4 className="font-bold text-gray-700 mb-2">🎁 Bonus assegnati</h4>
+                          {student.bonuses.length > 0 ? (
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="text-gray-500">
+                                  <th className="text-left py-1">Data</th>
+                                  <th className="text-left py-1">Motivo</th>
+                                  <th className="text-left py-1">Da</th>
+                                  <th className="text-right py-1">Punti</th>
+                                  <th className="text-right py-1"></th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {student.bonuses.map(b => (
+                                  <tr key={b.id} className="border-b">
+                                    <td className="py-1 text-gray-500">{formatDate(b.assigned_at)}</td>
+                                    <td className="py-1">{b.reason}</td>
+                                    <td className="py-1">
+                                      <span className={`px-2 py-0.5 rounded text-xs ${
+                                        b.assigned_by === 'system' ? 'bg-gray-100' : 'bg-blue-100 text-blue-700'
+                                      }`}>
+                                        {b.assigned_by}
+                                      </span>
+                                    </td>
+                                    <td className={`py-1 text-right font-bold ${b.points >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                      {b.points > 0 ? '+' : ''}{b.points}
+                                    </td>
+                                    <td className="py-1 text-right">
+                                      <button onClick={() => deleteBonus(b.id)} className="text-red-500 hover:text-red-700">🗑️</button>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                              <tfoot>
+                                <tr className="font-bold bg-gray-100">
+                                  <td colSpan={3} className="py-1 text-right">Totale:</td>
+                                  <td className="py-1 text-right text-indigo-600">{student.total_points}</td>
+                                  <td></td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          ) : (
+                            <div className="text-gray-400 italic">Nessun bonus</div>
+                          )}
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))}
               </tbody>
             </table>
@@ -519,7 +729,7 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
                     <th className="text-left py-3 px-4 font-semibold text-gray-600">Tipo</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-600">Destinatario</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-600">Motivo</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-600">Assegnato da</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-600">Da</th>
                     <th className="text-right py-3 px-4 font-semibold text-gray-600">Punti</th>
                     <th className="text-center py-3 px-4 font-semibold text-gray-600">Azioni</th>
                   </tr>
@@ -581,6 +791,108 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* VERIFY TAB */}
+        {activeTab === 'verify' && (
+          <div>
+            {/* Summary */}
+            <div className={`p-6 ${discrepancyCount > 0 ? 'bg-red-50' : 'bg-emerald-50'}`}>
+              <div className="flex items-center justify-center gap-4">
+                <div className={`text-4xl ${discrepancyCount > 0 ? 'text-red-500' : 'text-emerald-500'}`}>
+                  {discrepancyCount > 0 ? '⚠️' : '✅'}
+                </div>
+                <div>
+                  <div className={`text-xl font-bold ${discrepancyCount > 0 ? 'text-red-700' : 'text-emerald-700'}`}>
+                    {discrepancyCount > 0 
+                      ? `${discrepancyCount} squadre con discrepanze`
+                      : 'Tutti i punteggi sono corretti!'
+                    }
+                  </div>
+                  <div className="text-gray-600">
+                    Totale calcolato: {totalCalculated} | Totale leaderboard: {totalLeaderboard}
+                    {totalCalculated !== totalLeaderboard && (
+                      <span className="text-red-600 font-bold ml-2">
+                        (diff: {totalLeaderboard - totalCalculated})
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Detailed verification */}
+            <div className="p-4">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-600">Squadra</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">Studenti</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">Bonus</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">Calcolato</th>
+                    <th className="text-right py-3 px-4 font-semibold text-gray-600">Leaderboard</th>
+                    <th className="text-center py-3 px-4 font-semibold text-gray-600">Stato</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {teams.map((team) => (
+                    <tr key={team.id} className={`border-t ${team.has_discrepancy ? 'bg-red-50' : ''}`}>
+                      <td className="py-3 px-4">
+                        <div className="flex items-center gap-2">
+                          <div 
+                            className="w-4 h-4 rounded-full"
+                            style={{ backgroundColor: team.color }}
+                          />
+                          <span className="font-medium">{team.name}</span>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4 text-right text-gray-600">{team.student_points}</td>
+                      <td className="py-3 px-4 text-right text-gray-600">{team.team_bonus}</td>
+                      <td className="py-3 px-4 text-right font-bold">{team.calculated_total}</td>
+                      <td className="py-3 px-4 text-right font-bold">{team.leaderboard_total}</td>
+                      <td className="py-3 px-4 text-center">
+                        {team.has_discrepancy ? (
+                          <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-bold">
+                            ❌ {team.leaderboard_total - team.calculated_total > 0 ? '+' : ''}{team.leaderboard_total - team.calculated_total}
+                          </span>
+                        ) : (
+                          <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm">
+                            ✅ OK
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr className="bg-gray-100 font-bold">
+                    <td className="py-3 px-4">TOTALE</td>
+                    <td className="py-3 px-4 text-right">{teams.reduce((s, t) => s + t.student_points, 0)}</td>
+                    <td className="py-3 px-4 text-right">{teams.reduce((s, t) => s + t.team_bonus, 0)}</td>
+                    <td className="py-3 px-4 text-right">{totalCalculated}</td>
+                    <td className="py-3 px-4 text-right">{totalLeaderboard}</td>
+                    <td className="py-3 px-4 text-center">
+                      {totalCalculated === totalLeaderboard ? '✅' : '❌'}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+
+            {discrepancyCount > 0 && (
+              <div className="p-4 bg-amber-50 border-t">
+                <div className="text-amber-800">
+                  <strong>💡 Suggerimento:</strong> Le discrepanze possono essere causate da:
+                  <ul className="list-disc ml-6 mt-2">
+                    <li>View <code>teams_leaderboard</code> non aggiornata</li>
+                    <li>Bonus assegnati a studenti che non sono più nella squadra</li>
+                    <li>Cache del database</li>
+                  </ul>
+                  <div className="mt-2">Prova a cliccare <strong>🔄 Aggiorna</strong> o verifica la view in Supabase.</div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>
