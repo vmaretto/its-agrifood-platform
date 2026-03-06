@@ -12,6 +12,10 @@ export interface Team {
   member_count?: number;
   course_id?: string;
   created_at?: string;
+  // Nuovi campi per hackathon
+  tagline?: string;      // Sottopancia
+  logo_url?: string;     // URL logo
+  description?: string;  // Due frasi descrittive
 }
 
 export interface Student {
@@ -112,7 +116,7 @@ export async function createTeam(team: Omit<Team, 'id' | 'points' | 'member_coun
   return { ...data, points: 0, member_count: 0 };
 }
 
-export async function updateTeam(id: string, updates: Partial<Pick<Team, 'name' | 'color'>>): Promise<Team | null> {
+export async function updateTeam(id: string, updates: Partial<Pick<Team, 'name' | 'color' | 'tagline' | 'logo_url' | 'description'>>): Promise<Team | null> {
   const { data, error } = await supabase
     .from('teams')
     .update({ ...updates, updated_at: new Date().toISOString() })

@@ -40,14 +40,17 @@ export function TeamsSlide({ slide, courseId }: TeamsSlideProps) {
   }, [currentLeaderboard, courseId]);
 
   // Se abbiamo courseId, usa solo i dati dal DB; altrimenti merge con statici
-  const displayTeams: HackathonTeam[] = courseId && liveTeams.length > 0
+  const displayTeams: (HackathonTeam & { tagline?: string; logo_url?: string; description?: string })[] = courseId && liveTeams.length > 0
     ? liveTeams.map((team, idx) => ({
         name: team.name,
         points: team.points || 0,
         members: [], // I membri vengono caricati dal DB separatamente se necessario
         color: team.color || ['#EF4444', '#F97316', '#EAB308', '#22C55E', '#14B8A6', '#3B82F6', '#8B5CF6', '#EC4899'][idx % 8],
-        ideaHint: '',
-        techFocus: []
+        ideaHint: team.tagline || '',
+        techFocus: [],
+        tagline: team.tagline,
+        logo_url: team.logo_url,
+        description: team.description
       })).sort((a, b) => b.points - a.points)
     : staticTeams?.map(staticTeam => {
         const liveTeam = liveTeams.find(t => t.name === staticTeam.name);
@@ -101,7 +104,19 @@ export function TeamsSlide({ slide, courseId }: TeamsSlideProps) {
 
               {/* Team Info */}
               <div className="pt-3">
+                {/* Logo */}
+                {team.logo_url && (
+                  <div className="mb-2 flex justify-center">
+                    <img src={team.logo_url} alt={team.name} className="h-12 object-contain rounded" />
+                  </div>
+                )}
+                
                 <h4 className="font-bold text-gray-800 text-lg">{team.name}</h4>
+                
+                {/* Tagline */}
+                {team.tagline && (
+                  <p className="text-xs text-gray-500 italic mt-1">{team.tagline}</p>
+                )}
 
                 {/* Points */}
                 <div className="flex items-center gap-2 mt-2">
@@ -113,20 +128,22 @@ export function TeamsSlide({ slide, courseId }: TeamsSlideProps) {
 
                 {/* Members count */}
                 <div className="text-sm text-gray-500 mt-2">
-                  👥 {team.members.length} membri
+                  👥 {team.members.length || team.member_count || 0} membri
                 </div>
 
                 {/* Tech Focus Pills */}
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {team.techFocus.slice(0, 2).map((tech, techIdx) => (
-                    <span
-                      key={techIdx}
-                      className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs"
-                    >
-                      {tech}
-                    </span>
-                  ))}
-                </div>
+                {team.techFocus && team.techFocus.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {team.techFocus.slice(0, 2).map((tech, techIdx) => (
+                      <span
+                        key={techIdx}
+                        className="px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs"
+                      >
+                        {tech}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </button>
           );
@@ -140,15 +157,32 @@ export function TeamsSlide({ slide, courseId }: TeamsSlideProps) {
           style={{ backgroundColor: `${selectedTeam.color}10`, borderColor: selectedTeam.color, borderWidth: 2 }}
         >
           <div className="flex items-start gap-4">
-            <div
-              className="w-16 h-16 rounded-xl flex items-center justify-center text-white text-2xl font-bold"
-              style={{ backgroundColor: selectedTeam.color }}
-            >
-              {selectedTeam.name.charAt(0)}
-            </div>
+            {/* Logo o iniziale */}
+            {selectedTeam.logo_url ? (
+              <img 
+                src={selectedTeam.logo_url} 
+                alt={selectedTeam.name} 
+                className="w-16 h-16 rounded-xl object-contain bg-white p-2"
+              />
+            ) : (
+              <div
+                className="w-16 h-16 rounded-xl flex items-center justify-center text-white text-2xl font-bold"
+                style={{ backgroundColor: selectedTeam.color }}
+              >
+                {selectedTeam.name.charAt(0)}
+              </div>
+            )}
             <div className="flex-1">
               <h3 className="text-2xl font-bold text-gray-800">{selectedTeam.name}</h3>
-              <p className="text-gray-600 italic mt-1">💡 {selectedTeam.ideaHint}</p>
+              {selectedTeam.tagline && (
+                <p className="text-gray-500 italic text-sm mt-1">{selectedTeam.tagline}</p>
+              )}
+              {selectedTeam.description && (
+                <p className="text-gray-600 mt-2">{selectedTeam.description}</p>
+              )}
+              {selectedTeam.ideaHint && !selectedTeam.description && (
+                <p className="text-gray-600 italic mt-1">💡 {selectedTeam.ideaHint}</p>
+              )}
 
               {/* Members */}
               <div className="mt-4">

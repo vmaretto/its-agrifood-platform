@@ -32,10 +32,16 @@ interface TeamModalProps {
 const TeamModal: React.FC<TeamModalProps> = ({ team, isOpen, onClose, onSave }) => {
   const [name, setName] = useState(team?.name || '');
   const [color, setColor] = useState(team?.color || 'bg-emerald-500');
+  const [tagline, setTagline] = useState(team?.tagline || '');
+  const [logoUrl, setLogoUrl] = useState(team?.logo_url || '');
+  const [description, setDescription] = useState(team?.description || '');
 
   useEffect(() => {
     setName(team?.name || '');
     setColor(team?.color || 'bg-emerald-500');
+    setTagline(team?.tagline || '');
+    setLogoUrl(team?.logo_url || '');
+    setDescription(team?.description || '');
   }, [team, isOpen]);
 
   if (!isOpen) return null;
@@ -77,6 +83,44 @@ const TeamModal: React.FC<TeamModalProps> = ({ team, isOpen, onClose, onSave }) 
               ))}
             </div>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Sottopancia / Tagline</label>
+            <input
+              type="text"
+              value={tagline}
+              onChange={(e) => setTagline(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Es. Innovazione per il futuro agricolo"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">URL Logo</label>
+            <input
+              type="url"
+              value={logoUrl}
+              onChange={(e) => setLogoUrl(e.target.value)}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="https://esempio.com/logo.png"
+            />
+            {logoUrl && (
+              <div className="mt-2 flex justify-center">
+                <img src={logoUrl} alt="Logo preview" className="h-16 object-contain rounded" />
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1">Descrizione (max 2 frasi)</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+              placeholder="Descrivi brevemente l'idea della squadra..."
+            />
+          </div>
         </div>
 
         <div className="flex justify-end gap-3 mt-6">
@@ -89,7 +133,13 @@ const TeamModal: React.FC<TeamModalProps> = ({ team, isOpen, onClose, onSave }) 
           <button
             onClick={() => {
               if (name.trim()) {
-                onSave({ name: name.trim(), color });
+                onSave({ 
+                  name: name.trim(), 
+                  color,
+                  tagline: tagline.trim() || undefined,
+                  logo_url: logoUrl.trim() || undefined,
+                  description: description.trim() || undefined
+                });
                 onClose();
               }
             }}
