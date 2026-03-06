@@ -55,16 +55,17 @@ export default function AdminPunteggi({ courseId, onBack }: AdminPunteggiProps) 
       return;
     }
 
-    // Per ogni squadra, carica bonus e calcola totale
+    // Carica punteggi dalla view (stessa fonte della dashboard)
+    let leaderboardQuery = supabase.from('teams_leaderboard').select('*');
+    if (courseId) {
+      leaderboardQuery = leaderboardQuery.eq('course_id', courseId);
+    }
+    const { data: leaderboardData } = await leaderboardQuery;
+
+    // Per ogni squadra, carica i dettagli bonus
     const teamSummaries: TeamSummary[] = [];
 
-    for (const team of teamsData) {
-      // Conta membri
-      const { count: memberCount } = await supabase
-        .from('students')
-        .select('*', { count: 'exact', head: true })
-        .eq('team_id', team.id);
-
+    for (const team of (leaderboardData || [])) {
       // Carica studenti della squadra
       const { data: students } = await supabase
         .from('students')
@@ -89,7 +90,7 @@ export default function AdminPunteggi({ courseId, onBack }: AdminPunteggiProps) 
         studentBonuses = data || [];
       }
 
-      // Combina bonus
+      // Combina bonus (solo per visualizzazione dettaglio)
       const allBonuses: BonusDetail[] = [
         ...(teamBonuses || []).map(b => ({
           ...b,
@@ -106,15 +107,12 @@ export default function AdminPunteggi({ courseId, onBack }: AdminPunteggiProps) 
         })
       ].sort((a, b) => new Date(b.assigned_at).getTime() - new Date(a.assigned_at).getTime());
 
-      // Calcola totale
-      const totalPoints = allBonuses.reduce((sum, b) => sum + b.points, 0);
-
       teamSummaries.push({
         id: team.id,
         name: team.name,
         color: team.color || '#6B7280',
-        total_points: totalPoints,
-        member_count: memberCount || 0,
+        total_points: team.points || 0, // Usa il punteggio dalla view!
+        member_count: team.member_count || 0,
         bonuses: allBonuses
       });
     }
