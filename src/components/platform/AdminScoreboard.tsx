@@ -108,13 +108,24 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
     const studentsWithPoints: Student[] = [];
     
     for (const student of studentsData) {
+      // Bonus points
       const { data: bonusData } = await supabase
         .from('bonus_points')
         .select('id, points, reason, assigned_by, assigned_at')
         .eq('student_id', student.id)
         .order('assigned_at', { ascending: false });
       
-      const totalPoints = bonusData?.reduce((sum, b) => sum + b.points, 0) || 0;
+      const bonusPoints = bonusData?.reduce((sum, b) => sum + b.points, 0) || 0;
+
+      // Quiz scores
+      const { data: quizData } = await supabase
+        .from('student_quiz_scores')
+        .select('score')
+        .eq('student_id', student.id);
+      
+      const quizPoints = quizData?.reduce((sum, q) => sum + (q.score || 0), 0) || 0;
+
+      const totalPoints = quizPoints + bonusPoints;
       
       studentsWithPoints.push({
         id: student.id,
@@ -166,12 +177,23 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
 
       if (teamStudents && teamStudents.length > 0) {
         for (const student of teamStudents) {
+          // Bonus dello studente
           const { data: studentBonusData } = await supabase
             .from('bonus_points')
             .select('points')
             .eq('student_id', student.id);
           
-          const pts = studentBonusData?.reduce((sum, b) => sum + b.points, 0) || 0;
+          const bonusPts = studentBonusData?.reduce((sum, b) => sum + b.points, 0) || 0;
+
+          // Quiz scores dello studente
+          const { data: quizData } = await supabase
+            .from('student_quiz_scores')
+            .select('score')
+            .eq('student_id', student.id);
+          
+          const quizPts = quizData?.reduce((sum, q) => sum + (q.score || 0), 0) || 0;
+
+          const pts = bonusPts + quizPts;
           studentPoints += pts;
           members.push({
             id: student.id,
