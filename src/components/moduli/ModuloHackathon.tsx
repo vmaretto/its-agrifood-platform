@@ -1,9 +1,10 @@
 // @ts-nocheck
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ModuleJSON, SlideJSON, HackathonConfig } from '@/types/module';
 import { UserProfile } from '@/services/authService';
+import { getHackathonConfig, HackathonConfig as DBHackathonConfig } from '@/services/hackathonConfigService';
 import {
   CountdownTimer,
   HeroSlide,
@@ -32,10 +33,27 @@ export default function ModuloHackathon({
   courseId
 }: ModuloHackathonProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
+  const [dbConfig, setDbConfig] = useState<DBHackathonConfig | null>(null);
 
   const slide = module.slides[currentSlide];
-  const config = module.config as HackathonConfig | undefined;
+  const staticConfig = module.config as HackathonConfig | undefined;
   const progress = ((currentSlide + 1) / module.slides.length) * 100;
+
+  // Carica config countdown dal DB
+  useEffect(() => {
+    if (courseId) {
+      getHackathonConfig(courseId).then(setDbConfig);
+    }
+  }, [courseId]);
+
+  // Merge config: usa DB se disponibile, altrimenti statica
+  const config: HackathonConfig | undefined = dbConfig && dbConfig.is_active
+    ? {
+        ...staticConfig,
+        startTime: dbConfig.start_time,
+        endTime: dbConfig.end_time,
+      } as HackathonConfig
+    : staticConfig;
 
   const goNext = () => {
     if (currentSlide < module.slides.length - 1) {

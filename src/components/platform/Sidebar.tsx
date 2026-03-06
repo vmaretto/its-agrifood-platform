@@ -49,6 +49,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'admin-iscrizioni', icon: '📋', label: 'Iscrizioni' },
     { id: 'admin-badge', icon: '🎖️', label: 'Badge' },
     { id: 'admin-hackathon', icon: '💡', label: 'Hackathon' },
+    { id: 'admin-hackathon-config', icon: '⏱️', label: 'Countdown' },
     { id: 'admin-settings', icon: '⚙️', label: 'Impostazioni' },
   ];
 
