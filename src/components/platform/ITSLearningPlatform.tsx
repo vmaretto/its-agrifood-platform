@@ -17,6 +17,7 @@ import { getModules, getModuleSync, deleteModule, getModulesSync } from '@/servi
 import { ModuleJSON } from '@/types/module';
 import { getCurrentUser, signOut, UserProfile } from '@/services/authService';
 import { hackathonWinetechModule } from '@/data/hackathonWinetech';
+import { hackathonAgrifutureModule } from '@/data/hackathonAgrifuture';
 import { Course } from '@/services/coursesService';
 
 // ============================================
@@ -1886,7 +1887,7 @@ const ITSLearningPlatform: React.FC = () => {
       case 'hackathon':
         return (
           <ModuloHackathon
-            module={hackathonWinetechModule}
+            module={activeCourse?.slug?.includes('agrifuture') ? hackathonAgrifutureModule : hackathonWinetechModule}
             onBack={() => setCurrentView('home')}
             isAdmin={isAdmin}
             currentUser={currentUser}
@@ -1907,7 +1908,7 @@ const ITSLearningPlatform: React.FC = () => {
       case 'admin-hackathon':
         return (
           <ModuloHackathon
-            module={hackathonWinetechModule}
+            module={activeCourse?.slug?.includes('agrifuture') ? hackathonAgrifutureModule : hackathonWinetechModule}
             onBack={() => setCurrentView('admin-dashboard')}
             isAdmin={isAdmin}
             currentUser={currentUser}
