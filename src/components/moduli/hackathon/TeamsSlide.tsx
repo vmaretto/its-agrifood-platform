@@ -40,11 +40,12 @@ export function TeamsSlide({ slide, courseId }: TeamsSlideProps) {
   }, [currentLeaderboard, courseId]);
 
   // Se abbiamo courseId, usa solo i dati dal DB; altrimenti merge con statici
-  const displayTeams: (HackathonTeam & { tagline?: string; logo_url?: string; description?: string })[] = courseId && liveTeams.length > 0
+  const displayTeams: (HackathonTeam & { tagline?: string; logo_url?: string; description?: string; member_count?: number })[] = courseId && liveTeams.length > 0
     ? liveTeams.map((team, idx) => ({
         name: team.name,
         points: team.points || 0,
         members: [], // I membri vengono caricati dal DB separatamente se necessario
+        member_count: team.member_count || 0,
         color: team.color || ['#EF4444', '#F97316', '#EAB308', '#22C55E', '#14B8A6', '#3B82F6', '#8B5CF6', '#EC4899'][idx % 8],
         ideaHint: team.tagline || '',
         techFocus: [],
@@ -128,7 +129,7 @@ export function TeamsSlide({ slide, courseId }: TeamsSlideProps) {
 
                 {/* Members count */}
                 <div className="text-sm text-gray-500 mt-2">
-                  👥 {team.members.length || team.member_count || 0} membri
+                  👥 {team.members?.length || team.member_count || 0} membri
                 </div>
 
                 {/* Tech Focus Pills */}
