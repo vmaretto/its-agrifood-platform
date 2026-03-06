@@ -16,7 +16,7 @@ export function TeamsSlide({ slide, courseId }: TeamsSlideProps) {
 
   const [liveTeams, setLiveTeams] = useState<Team[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedTeam, setSelectedTeam] = useState<HackathonTeam | null>(null);
+  const [selectedTeam, setSelectedTeam] = useState<(HackathonTeam & { tagline?: string; logo_url?: string; description?: string; member_count?: number }) | null>(null);
 
   // Carica i dati live da Supabase se richiesto o se c'è courseId
   useEffect(() => {
