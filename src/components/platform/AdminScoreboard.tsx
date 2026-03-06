@@ -79,12 +79,27 @@ export default function AdminScoreboard({ courseId, onBack }: AdminScoreboardPro
   };
 
   const loadStudents = async () => {
+    // Prima ottieni i team del corso
+    let teamIds: string[] = [];
+    if (courseId) {
+      const { data: courseTeams } = await supabase
+        .from('teams')
+        .select('id')
+        .eq('course_id', courseId);
+      teamIds = courseTeams?.map(t => t.id) || [];
+    }
+
+    // Poi carica gli studenti (filtrati per team se c'è un corso)
     let query = supabase
       .from('students')
-      .select(`id, first_name, last_name, email, team_id, teams!left(name, color)`);
+      .select(`id, first_name, last_name, email, team_id, teams!left(name, color, course_id)`);
     
-    if (courseId) {
-      query = query.eq('course_id', courseId);
+    if (courseId && teamIds.length > 0) {
+      query = query.in('team_id', teamIds);
+    } else if (courseId) {
+      // Se il corso non ha team, non mostrare studenti
+      setStudents([]);
+      return;
     }
     
     const { data: studentsData } = await query;
