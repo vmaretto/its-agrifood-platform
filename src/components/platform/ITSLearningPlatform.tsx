@@ -1891,6 +1891,7 @@ const ITSLearningPlatform: React.FC = () => {
             onBack={() => setCurrentView('home')}
             isAdmin={isAdmin}
             currentUser={currentUser}
+            courseId={activeCourse?.id}
           />
         );
       
@@ -1912,6 +1913,7 @@ const ITSLearningPlatform: React.FC = () => {
             onBack={() => setCurrentView('admin-dashboard')}
             isAdmin={isAdmin}
             currentUser={currentUser}
+            courseId={activeCourse?.id}
           />
         );
       case 'admin-settings':

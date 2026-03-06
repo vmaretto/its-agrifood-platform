@@ -21,13 +21,15 @@ interface ModuloHackathonProps {
   onBack?: () => void;
   isAdmin?: boolean;
   currentUser?: UserProfile | null;
+  courseId?: string;
 }
 
 export default function ModuloHackathon({
   module,
   onBack,
   isAdmin = false,
-  currentUser
+  currentUser,
+  courseId
 }: ModuloHackathonProps) {
   const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -59,13 +61,13 @@ export default function ModuloHackathon({
       case 'resources':
         return <ResourcesSlide slide={slide} />;
       case 'teams':
-        return <TeamsSlide slide={slide} />;
+        return <TeamsSlide slide={slide} courseId={courseId} />;
       case 'voting':
         return <VotingSlide slide={slide} hackathonId={module.id} isAdmin={isAdmin} currentUser={currentUser} />;
       case 'timeline':
         return <TimelineSlide slide={slide} config={config!} />;
       case 'leaderboard':
-        return <LeaderboardSlide slide={slide} />;
+        return <LeaderboardSlide slide={slide} courseId={courseId} />;
       default:
         // Fallback: mostra contenuto testuale se presente
         return (

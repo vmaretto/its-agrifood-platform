@@ -6,6 +6,7 @@ import { getTeams, Team } from '@/services/teamsService';
 
 interface LeaderboardSlideProps {
   slide: SlideJSON;
+  courseId?: string;
 }
 
 interface LeaderboardConfig {
@@ -23,7 +24,7 @@ interface PointsBreakdown {
   specialAwards: number;
 }
 
-export function LeaderboardSlide({ slide }: LeaderboardSlideProps) {
+export function LeaderboardSlide({ slide, courseId }: LeaderboardSlideProps) {
   const vc = slide.visualContent || {};
   const leaderboardConfig = vc.leaderboardConfig as LeaderboardConfig | undefined;
   const staticStandings = vc.currentStandings as LeaderboardStanding[] | undefined;
@@ -39,7 +40,7 @@ export function LeaderboardSlide({ slide }: LeaderboardSlideProps) {
     const loadTeams = async () => {
       setIsLoading(true);
       try {
-        const teams = await getTeams();
+        const teams = await getTeams(courseId);
         setLiveTeams(teams);
       } catch (err) {
         console.error('Error loading teams:', err);
@@ -51,17 +52,26 @@ export function LeaderboardSlide({ slide }: LeaderboardSlideProps) {
     // Polling ogni 30 secondi
     const interval = setInterval(loadTeams, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [courseId]);
 
-  // Merge dei dati
-  const standings: LeaderboardStanding[] = staticStandings?.map(standing => {
-    const liveTeam = liveTeams.find(t => t.name === standing.team);
-    return {
-      ...standing,
-      prePoints: liveTeam?.points ?? standing.prePoints,
-      total: (liveTeam?.points ?? standing.prePoints) + standing.hackPoints,
-    };
-  }).sort((a, b) => b.total - a.total).map((s, idx) => ({ ...s, rank: idx + 1 })) || [];
+  // Se abbiamo courseId, usa solo i dati dal DB; altrimenti merge con statici
+  const standings: LeaderboardStanding[] = courseId && liveTeams.length > 0
+    ? liveTeams.map((team, idx) => ({
+        rank: idx + 1,
+        team: team.name,
+        prePoints: team.points || 0,
+        hackPoints: 0,
+        total: team.points || 0,
+        badges: []
+      })).sort((a, b) => b.total - a.total).map((s, idx) => ({ ...s, rank: idx + 1 }))
+    : staticStandings?.map(standing => {
+        const liveTeam = liveTeams.find(t => t.name === standing.team);
+        return {
+          ...standing,
+          prePoints: liveTeam?.points ?? standing.prePoints,
+          total: (liveTeam?.points ?? standing.prePoints) + standing.hackPoints,
+        };
+      }).sort((a, b) => b.total - a.total).map((s, idx) => ({ ...s, rank: idx + 1 })) || [];
 
   // Animazione punti
   useEffect(() => {

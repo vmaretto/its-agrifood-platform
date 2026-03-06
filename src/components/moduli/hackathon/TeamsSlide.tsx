@@ -6,9 +6,10 @@ import { getTeams, Team } from '@/services/teamsService';
 
 interface TeamsSlideProps {
   slide: SlideJSON;
+  courseId?: string;
 }
 
-export function TeamsSlide({ slide }: TeamsSlideProps) {
+export function TeamsSlide({ slide, courseId }: TeamsSlideProps) {
   const vc = slide.visualContent || {};
   const staticTeams = vc.teams as HackathonTeam[] | undefined;
   const currentLeaderboard = vc.currentLeaderboard as boolean | undefined;
@@ -17,13 +18,13 @@ export function TeamsSlide({ slide }: TeamsSlideProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<HackathonTeam | null>(null);
 
-  // Carica i dati live da Supabase se richiesto
+  // Carica i dati live da Supabase se richiesto o se c'è courseId
   useEffect(() => {
-    if (currentLeaderboard) {
+    if (currentLeaderboard || courseId) {
       const loadTeams = async () => {
         setIsLoading(true);
         try {
-          const teams = await getTeams();
+          const teams = await getTeams(courseId);
           setLiveTeams(teams);
         } catch (err) {
           console.error('Error loading teams:', err);
@@ -36,16 +37,25 @@ export function TeamsSlide({ slide }: TeamsSlideProps) {
       const interval = setInterval(loadTeams, 30000);
       return () => clearInterval(interval);
     }
-  }, [currentLeaderboard]);
+  }, [currentLeaderboard, courseId]);
 
-  // Merge dei dati statici con quelli live
-  const displayTeams: HackathonTeam[] = staticTeams?.map(staticTeam => {
-    const liveTeam = liveTeams.find(t => t.name === staticTeam.name);
-    return {
-      ...staticTeam,
-      points: liveTeam?.points ?? staticTeam.points,
-    };
-  }).sort((a, b) => b.points - a.points) || [];
+  // Se abbiamo courseId, usa solo i dati dal DB; altrimenti merge con statici
+  const displayTeams: HackathonTeam[] = courseId && liveTeams.length > 0
+    ? liveTeams.map((team, idx) => ({
+        name: team.name,
+        points: team.points || 0,
+        members: [], // I membri vengono caricati dal DB separatamente se necessario
+        color: team.color || ['#EF4444', '#F97316', '#EAB308', '#22C55E', '#14B8A6', '#3B82F6', '#8B5CF6', '#EC4899'][idx % 8],
+        ideaHint: '',
+        techFocus: []
+      })).sort((a, b) => b.points - a.points)
+    : staticTeams?.map(staticTeam => {
+        const liveTeam = liveTeams.find(t => t.name === staticTeam.name);
+        return {
+          ...staticTeam,
+          points: liveTeam?.points ?? staticTeam.points,
+        };
+      }).sort((a, b) => b.points - a.points) || [];
 
   return (
     <div className="space-y-6">
