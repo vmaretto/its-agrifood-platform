@@ -513,8 +513,8 @@ export const hackathonAgrifutureModule: ModuleJSON = {
           { "id": "tech", "name": "Uso Tech", "emoji": "🤖", "description": "Integrazione tecnologie corso", "maxScore": 5 }
         ],
         "prizes": [
-          { "position": "🥇", "label": "1° Classificato", "points": 2000, "badge": "🏆 Hackathon Champion" },
-          { "position": "🥈", "label": "2° Classificato", "points": 1000, "badge": "⭐ Runner Up" },
+          { "position": "🥇", "label": "1° Classificato", "points": 1000, "badge": "🏆 Hackathon Champion" },
+          { "position": "🥈", "label": "2° Classificato", "points": 750, "badge": "⭐ Runner Up" },
           { "position": "🥉", "label": "3° Classificato", "points": 500, "badge": "🌟 Top Pitcher" },
           { "position": "🎬", "label": "Best Pitch Format", "points": 200, "badge": "🎬 Creative Award" },
           { "position": "🤖", "label": "Best Tech Integration", "points": 200, "badge": "🤖 Tech Master" },
@@ -648,9 +648,9 @@ export const hackathonAgrifutureModule: ModuleJSON = {
           { "rank": 8, "team": "CellarSense", "prePoints": 0, "hackPoints": 0, "total": 0, "badges": [] }
         ],
         "pointsBreakdown": {
-          "firstPlace": { "jury": 350, "peer": 150, "total": 500 },
-          "secondPlace": { "jury": 210, "peer": 90, "total": 300 },
-          "thirdPlace": { "jury": 140, "peer": 60, "total": 200 },
+          "firstPlace": { "jury": 700, "peer": 300, "total": 1000 },
+          "secondPlace": { "jury": 525, "peer": 225, "total": 750 },
+          "thirdPlace": { "jury": 350, "peer": 150, "total": 500 },
           "specialAwards": 100
         },
         "possibleBadges": [
@@ -666,7 +666,7 @@ export const hackathonAgrifutureModule: ModuleJSON = {
           "type": "success",
           "icon": "🔥",
           "title": "Tutto in gioco!",
-          "text": "Con 500 punti per il primo, anche le squadre in fondo alla classifica possono rimontare. Dateci dentro!"
+          "text": "Con 1000 punti per il primo, anche le squadre in fondo alla classifica possono rimontare. Dateci dentro!"
         }
       },
       "videos": [],

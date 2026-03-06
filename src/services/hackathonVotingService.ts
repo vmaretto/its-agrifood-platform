@@ -41,8 +41,8 @@ export const POINTS_PER_STAR = 100;
 
 // Premi per posizione
 export const PRIZE_POINTS = {
-  1: 2000,
-  2: 1000,
+  1: 1000,
+  2: 750,
   3: 500
 };
 
