@@ -174,28 +174,27 @@ export default function AdminPunteggi({ courseId, onBack }: AdminPunteggiProps) 
       .order('assigned_at');
 
     if (moduleBonuses) {
-      const moduleCount = new Map<string, { count: number; ids: string[]; reason: string }>();
+      const moduleCount = new Map<string, { count: number; ids: string[]; reason: string; studentId: string }>();
       
       for (const bonus of moduleBonuses) {
-        const key = `${bonus.student_id}-${bonus.reason}`;
+        const key = `${bonus.student_id}|||${bonus.reason}`;
         const existing = moduleCount.get(key);
         if (existing) {
           existing.count++;
           existing.ids.push(bonus.id);
         } else {
-          moduleCount.set(key, { count: 1, ids: [bonus.id], reason: bonus.reason });
+          moduleCount.set(key, { count: 1, ids: [bonus.id], reason: bonus.reason, studentId: bonus.student_id });
         }
       }
 
-      Array.from(moduleCount.entries()).forEach(([key, value]) => {
+      Array.from(moduleCount.entries()).forEach(([, value]) => {
         if (value.count > 1) {
-          const studentId = key.split('-')[0];
-          const student = studentMap.get(studentId);
+          const student = studentMap.get(value.studentId);
           const team = student ? teamMap.get(student.team_id) : null;
           
           alerts.push({
             type: 'duplicate_module',
-            student_id: studentId,
+            student_id: value.studentId,
             student_name: student ? `${student.first_name} ${student.last_name}` : 'Unknown',
             team_name: team?.name || 'Unknown',
             detail: value.reason.replace('Modulo completato: ', ''),
@@ -217,10 +216,10 @@ export default function AdminPunteggi({ courseId, onBack }: AdminPunteggiProps) 
       .order('created_at');
 
     if (quizScores) {
-      const quizCount = new Map<string, { count: number; correct: number; module_id: string; quiz_index: number }>();
+      const quizCount = new Map<string, { count: number; correct: number; module_id: string; quiz_index: number; studentId: string }>();
       
       for (const score of quizScores) {
-        const key = `${score.student_id}-${score.module_id}-${score.quiz_index}`;
+        const key = `${score.student_id}|||${score.module_id}|||${score.quiz_index}`;
         const existing = quizCount.get(key);
         if (existing) {
           existing.count++;
@@ -230,20 +229,20 @@ export default function AdminPunteggi({ courseId, onBack }: AdminPunteggiProps) 
             count: 1, 
             correct: score.is_correct ? 1 : 0,
             module_id: score.module_id,
-            quiz_index: score.quiz_index
+            quiz_index: score.quiz_index,
+            studentId: score.student_id
           });
         }
       }
 
-      Array.from(quizCount.entries()).forEach(([key, value]) => {
+      Array.from(quizCount.entries()).forEach(([, value]) => {
         if (value.count > 1) {
-          const [studentId] = key.split('-');
-          const student = studentMap.get(studentId);
+          const student = studentMap.get(value.studentId);
           const team = student ? teamMap.get(student.team_id) : null;
           
           alerts.push({
             type: 'duplicate_quiz',
-            student_id: studentId,
+            student_id: value.studentId,
             student_name: student ? `${student.first_name} ${student.last_name}` : 'Unknown',
             team_name: team?.name || 'Unknown',
             detail: `Quiz ${value.quiz_index + 1} (${value.correct}/${value.count} corrette)`,
