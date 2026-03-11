@@ -52,7 +52,7 @@ interface StudentWithProgress {
   total_time_seconds: number;
 }
 
-const AdminDashboard = ({ courseId }: { courseId?: string }) => {
+const AdminDashboard = ({ courseId, setCurrentView }: { courseId?: string; setCurrentView?: (view: string) => void }) => {
   const [isLoading, setIsLoading] = React.useState(true);
   const [stats, setStats] = React.useState({
     studentsCount: 0,
@@ -1045,6 +1045,25 @@ const AdminDashboard = ({ courseId }: { courseId?: string }) => {
           </div>
         </>
       )}
+
+      {/* CTA Vai ai Moduli Formativi - Sempre visibile */}
+      <div className="mt-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="text-sm opacity-80 mb-1">Gestisci i contenuti</div>
+            <div className="text-xl font-bold mb-2">Vai ai Moduli Formativi</div>
+            <div className="text-sm opacity-80">
+              Crea, modifica ed esplora i moduli del corso
+            </div>
+          </div>
+          <button
+            onClick={() => setCurrentView?.('contenuti')}
+            className="px-6 py-3 bg-white text-indigo-600 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
+          >
+            Gestisci moduli
+          </button>
+        </div>
+      </div>
     </div>
   );
 };
@@ -1900,7 +1919,7 @@ const ITSLearningPlatform: React.FC = () => {
       
       // Viste Admin
       case 'admin-dashboard':
-        return <AdminDashboard courseId={activeCourse?.id} />;
+        return <AdminDashboard courseId={activeCourse?.id} setCurrentView={setCurrentView} />;
       case 'admin-contenuti':
         return <AdminContenuti setActiveModule={setActiveModule} onEditModule={handleEditModule} courseId={activeCourse?.id} />;
       case 'admin-squadre':
@@ -1959,7 +1978,7 @@ const ITSLearningPlatform: React.FC = () => {
       default:
         // Per admin/docenti, mostra direttamente la dashboard admin
         if (isAdmin) {
-          return <AdminDashboard courseId={activeCourse?.id} />;
+          return <AdminDashboard courseId={activeCourse?.id} setCurrentView={setCurrentView} />;
         }
         return (
           <HomeDashboard
