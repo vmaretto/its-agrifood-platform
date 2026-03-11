@@ -1076,6 +1076,11 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: 
   const [editingSectionId, setEditingSectionId] = React.useState<string | null>(null);
   const [newSection, setNewSection] = React.useState('');
   
+  // Stato per duplicazione in altro corso
+  const [duplicatingModuleId, setDuplicatingModuleId] = React.useState<string | null>(null);
+  const [availableCourses, setAvailableCourses] = React.useState<{ id: string; name: string }[]>([]);
+  const [isDuplicating, setIsDuplicating] = React.useState(false);
+  
   const SECTION_OPTIONS = [
     '', 
     'Intelligenza Artificiale', 
@@ -1104,6 +1109,53 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: 
     };
     loadModules();
   }, [onRefresh, courseId]);
+
+  // Carica lista corsi per duplicazione
+  React.useEffect(() => {
+    const loadCourses = async () => {
+      try {
+        const { getCourses } = await import('@/services/coursesService');
+        const courses = await getCourses();
+        // Escludi il corso corrente dalla lista
+        setAvailableCourses(courses.filter(c => c.id !== courseId).map(c => ({ id: c.id, name: c.name })));
+      } catch (err) {
+        console.error('Error loading courses:', err);
+      }
+    };
+    loadCourses();
+  }, [courseId]);
+
+  // Duplica modulo in altro corso
+  const handleDuplicateModule = async (moduleId: string, targetCourseId: string) => {
+    const moduleToDuplicate = modules.find(m => m.id === moduleId);
+    if (!moduleToDuplicate) return;
+    
+    setIsDuplicating(true);
+    try {
+      const { saveModule, generateModuleId } = await import('@/services/moduliStorage');
+      
+      // Genera nuovo ID per la copia
+      const newId = generateModuleId(moduleToDuplicate.titolo);
+      
+      // Crea copia con nuovo ID e nuovo corso
+      const copiedModule = {
+        ...moduleToDuplicate,
+        id: newId,
+        courseId: targetCourseId,
+        createdAt: new Date().toISOString(),
+      };
+      
+      // Salva la copia nel corso di destinazione
+      await saveModule(copiedModule, targetCourseId);
+      
+      alert(`✅ Modulo duplicato con successo!`);
+      setDuplicatingModuleId(null);
+    } catch (err) {
+      console.error('Error duplicating module:', err);
+      alert('Errore durante la duplicazione');
+    }
+    setIsDuplicating(false);
+  };
 
   const handleDeleteModule = async (id: string) => {
     if (confirm('Sei sicuro di voler eliminare questo modulo?')) {
@@ -1314,6 +1366,41 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: 
                         >
                           📥
                         </button>
+                        {/* Duplica in altro corso */}
+                        {duplicatingModuleId === modulo.id ? (
+                          <div className="flex items-center gap-1">
+                            <select
+                              onChange={(e) => {
+                                if (e.target.value) {
+                                  handleDuplicateModule(modulo.id, e.target.value);
+                                }
+                              }}
+                              className="text-xs px-1 py-1 border rounded"
+                              disabled={isDuplicating}
+                              defaultValue=""
+                            >
+                              <option value="" disabled>Corso...</option>
+                              {availableCourses.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => setDuplicatingModuleId(null)}
+                              className="text-gray-400 hover:text-gray-600 px-1"
+                              title="Annulla"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => setDuplicatingModuleId(modulo.id)}
+                            className="px-2 py-1 text-xs text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                            title="Duplica in altro corso"
+                          >
+                            📋
+                          </button>
+                        )}
                         <button
                           onClick={() => handleDeleteModule(modulo.id)}
                           className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded transition-colors"
