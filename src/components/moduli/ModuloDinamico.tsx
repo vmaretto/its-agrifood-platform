@@ -1166,7 +1166,7 @@ export default function ModuloDinamico({ module: initialModule, onBack, isAdmin 
                 }}
                 className="px-8 py-4 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-xl font-bold text-lg hover:from-emerald-600 hover:to-teal-600 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
               >
-                ✅ Completa Modulo e Ottieni +50 Punti
+                ✅ Completa Modulo e Ottieni Punti
               </button>
             </div>
           </div>
