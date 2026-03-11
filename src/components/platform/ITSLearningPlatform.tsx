@@ -1869,6 +1869,8 @@ const AdminSettings = () => {
 const ITSLearningPlatform: React.FC = () => {
   const [currentView, setCurrentView] = useState('home');
   const [activeModule, setActiveModule] = useState<string | null>(null);
+  const [activeModuleData, setActiveModuleData] = useState<ModuleJSON | null>(null);
+  const [isLoadingModule, setIsLoadingModule] = useState(false);
   const [editingModuleId, setEditingModuleId] = useState<string | null>(null);
 
   // Auth state
@@ -1881,6 +1883,29 @@ const ITSLearningPlatform: React.FC = () => {
   // Deriva il ruolo dall'utente autenticato
   const userRole = currentUser?.role === 'teacher' || currentUser?.role === 'admin' ? 'admin' : 'student';
   const isAdmin = userRole === 'admin';
+  
+  // Carica il modulo da Supabase quando activeModule cambia
+  useEffect(() => {
+    const loadModule = async () => {
+      if (!activeModule) {
+        setActiveModuleData(null);
+        return;
+      }
+      
+      setIsLoadingModule(true);
+      try {
+        const { getModule } = await import('@/services/moduliStorage');
+        const moduleData = await getModule(activeModule);
+        setActiveModuleData(moduleData);
+      } catch (err) {
+        console.error('Error loading module:', err);
+        setActiveModuleData(null);
+      }
+      setIsLoadingModule(false);
+    };
+    
+    loadModule();
+  }, [activeModule]);
 
   // Carica l'utente corrente all'avvio
   useEffect(() => {
@@ -1975,14 +2000,25 @@ const ITSLearningPlatform: React.FC = () => {
   // Render del modulo attivo - tutti i moduli sono su Supabase
   const renderActiveModule = () => {
     if (!activeModule) return null;
+    
+    // Mostra loading mentre carica
+    if (isLoadingModule) {
+      return (
+        <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+          <div className="text-center">
+            <div className="text-4xl mb-4 animate-pulse">📚</div>
+            <p className="text-gray-500">Caricamento modulo...</p>
+          </div>
+        </div>
+      );
+    }
 
-    const dynamicModule = getModuleSync(activeModule);
-    if (dynamicModule) {
+    if (activeModuleData) {
       // Se il modulo è di tipo hackathon, usa ModuloHackathon
-      if (dynamicModule.tipo === 'hackathon') {
+      if (activeModuleData.tipo === 'hackathon') {
         return (
           <ModuloHackathon
-            module={dynamicModule}
+            module={activeModuleData}
             onBack={() => setActiveModule(null)}
             isAdmin={isAdmin}
             currentUser={currentUser}
@@ -1993,7 +2029,7 @@ const ITSLearningPlatform: React.FC = () => {
       // Per tutti gli altri moduli, usa ModuloDinamico
       return (
         <ModuloDinamico
-          module={dynamicModule}
+          module={activeModuleData}
           onBack={() => setActiveModule(null)}
           isAdmin={isAdmin}
           userRole={userRole}
@@ -2001,7 +2037,22 @@ const ITSLearningPlatform: React.FC = () => {
         />
       );
     }
-    return null;
+    
+    // Modulo non trovato
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-4xl mb-4">❌</div>
+          <p className="text-gray-500 mb-4">Modulo non trovato</p>
+          <button 
+            onClick={() => setActiveModule(null)}
+            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+          >
+            Torna indietro
+          </button>
+        </div>
+      </div>
+    );
   };
 
   // Se c'è un modulo attivo, mostra il modulo a schermo intero
