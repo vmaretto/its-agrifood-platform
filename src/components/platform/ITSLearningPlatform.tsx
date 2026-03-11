@@ -1050,17 +1050,17 @@ const AdminDashboard = ({ courseId, setCurrentView }: { courseId?: string; setCu
       <div className="mt-6 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-lg">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-sm opacity-80 mb-1">Gestisci i contenuti</div>
+            <div className="text-sm opacity-80 mb-1">Esplora i contenuti</div>
             <div className="text-xl font-bold mb-2">Vai ai Moduli Formativi</div>
             <div className="text-sm opacity-80">
-              Crea, modifica ed esplora i moduli del corso
+              Visualizza e gestisci i moduli del corso
             </div>
           </div>
           <button
-            onClick={() => setCurrentView?.('contenuti')}
+            onClick={() => setCurrentView?.('admin-contenuti')}
             className="px-6 py-3 bg-white text-indigo-600 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
           >
-            Gestisci moduli
+            Vedi moduli
           </button>
         </div>
       </div>
@@ -1094,6 +1094,23 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: 
       const allModules = await getModules(courseId);
       setModules(allModules);
     }
+  };
+
+  // Scarica il JSON del modulo
+  const handleDownloadModule = (id: string) => {
+    const moduleData = modules.find(m => m.id === id);
+    if (!moduleData) return;
+    
+    const jsonString = JSON.stringify(moduleData, null, 2);
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${id}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   // Converti moduli nel formato della tabella
@@ -1189,6 +1206,13 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: 
                         Modifica
                       </button>
                     )}
+                    <button
+                      onClick={() => handleDownloadModule(modulo.id)}
+                      className="px-3 py-1 text-sm text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors ml-2"
+                      title="Scarica JSON"
+                    >
+                      📥 JSON
+                    </button>
                     <button
                       onClick={() => handleDeleteModule(modulo.id)}
                       className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2"
