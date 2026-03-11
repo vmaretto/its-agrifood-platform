@@ -155,11 +155,19 @@ export default function AdminPunteggi({ courseId, onBack }: AdminPunteggiProps) 
     teamMap: Map<string, any>
   ) => {
     const alerts: CheatAlert[] = [];
+    
+    // Ottieni gli ID degli studenti del corso corrente
+    const courseStudentIds = Array.from(studentMap.keys());
+    if (courseStudentIds.length === 0) {
+      setCheatAlerts([]);
+      return;
+    }
 
     // 1. MODULI COMPLETATI PIÙ VOLTE (bonus duplicati)
     const { data: moduleBonuses } = await supabase
       .from('bonus_points')
       .select('*')
+      .in('student_id', courseStudentIds)
       .like('reason', 'Modulo completato:%')
       .order('student_id')
       .order('reason')
@@ -202,6 +210,7 @@ export default function AdminPunteggi({ courseId, onBack }: AdminPunteggiProps) 
     const { data: quizScores } = await supabase
       .from('student_quiz_scores')
       .select('*')
+      .in('student_id', courseStudentIds)
       .order('student_id')
       .order('module_id')
       .order('quiz_index')
@@ -248,6 +257,7 @@ export default function AdminPunteggi({ courseId, onBack }: AdminPunteggiProps) 
     const { data: progressData } = await supabase
       .from('user_progress')
       .select('*')
+      .in('student_id', courseStudentIds)
       .eq('is_completed', true)
       .lt('time_spent_seconds', 120) // Meno di 2 minuti
       .order('student_id');
