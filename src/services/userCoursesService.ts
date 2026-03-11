@@ -43,8 +43,44 @@ export interface StudentNotEnrolled {
 // ============================================
 
 // Ottieni i corsi a cui uno studente è iscritto
+// Prima cerca tramite team (studente → team → corso)
+// Poi cerca anche in user_courses come fallback
 export async function getUserCourses(userId: string): Promise<Course[]> {
-  const { data, error } = await supabase
+  const coursesMap = new Map<string, Course>();
+  
+  // 1. Cerca corsi tramite il team dello studente
+  const { data: studentData, error: studentError } = await supabase
+    .from('students')
+    .select(`
+      team_id,
+      teams (
+        course_id,
+        courses (
+          id,
+          name,
+          slug,
+          description,
+          icon,
+          is_active
+        )
+      )
+    `)
+    .eq('id', userId)
+    .single();
+
+  if (!studentError && studentData?.teams) {
+    const teams = studentData.teams as { course_id: string; courses: Course | Course[] | null } | { course_id: string; courses: Course | Course[] | null }[];
+    const teamData = Array.isArray(teams) ? teams[0] : teams;
+    if (teamData?.courses) {
+      const course = Array.isArray(teamData.courses) ? teamData.courses[0] : teamData.courses;
+      if (course && course.is_active) {
+        coursesMap.set(course.id, course);
+      }
+    }
+  }
+
+  // 2. Cerca anche in user_courses come fallback
+  const { data: userCoursesData, error: ucError } = await supabase
     .from('user_courses')
     .select(`
       course_id,
@@ -60,19 +96,16 @@ export async function getUserCourses(userId: string): Promise<Course[]> {
     .eq('user_id', userId)
     .eq('is_active', true);
 
-  if (error) {
-    console.error('Error fetching user courses:', error);
-    return [];
+  if (!ucError && userCoursesData) {
+    for (const uc of userCoursesData) {
+      const course = Array.isArray(uc.courses) ? uc.courses[0] : uc.courses;
+      if (course && course.is_active && !coursesMap.has(course.id)) {
+        coursesMap.set(course.id, course);
+      }
+    }
   }
 
-  // Estrai i corsi dal risultato
-  return (data || [])
-    .map((uc: { courses: Course | Course[] | null }) => {
-      // courses può essere un oggetto o un array
-      const course = Array.isArray(uc.courses) ? uc.courses[0] : uc.courses;
-      return course;
-    })
-    .filter((c): c is Course => c !== null && c.is_active);
+  return Array.from(coursesMap.values());
 }
 
 // Verifica se uno studente ha accesso a un corso
