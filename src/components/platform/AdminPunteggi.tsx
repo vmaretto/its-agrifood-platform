@@ -179,7 +179,7 @@ export default function AdminPunteggi({ courseId, onBack }: AdminPunteggiProps) 
         }
       }
 
-      for (const [key, value] of moduleCount) {
+      Array.from(moduleCount.entries()).forEach(([key, value]) => {
         if (value.count > 1) {
           const studentId = key.split('-')[0];
           const student = studentMap.get(studentId);
@@ -195,7 +195,7 @@ export default function AdminPunteggi({ courseId, onBack }: AdminPunteggiProps) 
             ids_to_delete: value.ids.slice(1) // Mantieni solo il primo
           });
         }
-      }
+      });
     }
 
     // 2. QUIZ RIFATTI PIÙ VOLTE
@@ -226,7 +226,7 @@ export default function AdminPunteggi({ courseId, onBack }: AdminPunteggiProps) 
         }
       }
 
-      for (const [key, value] of quizCount) {
+      Array.from(quizCount.entries()).forEach(([key, value]) => {
         if (value.count > 1) {
           const [studentId] = key.split('-');
           const student = studentMap.get(studentId);
@@ -241,7 +241,7 @@ export default function AdminPunteggi({ courseId, onBack }: AdminPunteggiProps) 
             count: value.count
           });
         }
-      }
+      });
     }
 
     // 3. COMPLETAMENTI TROPPO VELOCI (< 2 minuti per modulo)
