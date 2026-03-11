@@ -1249,13 +1249,13 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: 
                       </div>
                       
                       {/* Modifica sezione inline */}
-                      <div className="w-40">
+                      <div className={editingSectionId === modulo.id ? "w-56" : "w-40"}>
                         {editingSectionId === modulo.id ? (
                           <div className="flex items-center gap-1">
                             <select
                               value={newSection}
                               onChange={(e) => setNewSection(e.target.value)}
-                              className="text-xs px-2 py-1 border rounded flex-1"
+                              className="text-xs px-2 py-1 border rounded flex-1 min-w-0"
                               autoFocus
                             >
                               <option value="">Nessuna</option>
@@ -1265,13 +1265,15 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: 
                             </select>
                             <button
                               onClick={() => handleUpdateSection(modulo.id)}
-                              className="text-emerald-600 hover:text-emerald-700"
+                              className="text-emerald-600 hover:text-emerald-700 flex-shrink-0 px-1"
+                              title="Conferma"
                             >
                               ✓
                             </button>
                             <button
                               onClick={() => { setEditingSectionId(null); setNewSection(''); }}
-                              className="text-gray-400 hover:text-gray-600"
+                              className="text-gray-400 hover:text-gray-600 flex-shrink-0 px-1"
+                              title="Annulla"
                             >
                               ✕
                             </button>
