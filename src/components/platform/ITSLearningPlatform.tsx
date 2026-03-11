@@ -1071,6 +1071,23 @@ const AdminDashboard = ({ courseId, setCurrentView }: { courseId?: string; setCu
 const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: { setActiveModule?: (id: string) => void; onRefresh?: number; onEditModule?: (moduleId: string) => void; courseId?: string }) => {
   const [modules, setModules] = React.useState<ModuleJSON[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
+  
+  // Stato per modifica sezione
+  const [editingSectionId, setEditingSectionId] = React.useState<string | null>(null);
+  const [newSection, setNewSection] = React.useState('');
+  
+  const SECTION_OPTIONS = [
+    '', 
+    'Intelligenza Artificiale', 
+    'Blockchain', 
+    'IoT e Sensori',
+    'Sostenibilità',
+    'FoodTech Trend', 
+    'Marketing',
+    'Realtà Virtuale/Aumentata',
+    'Big Data e Analytics',
+    'Automazione'
+  ];
 
   // Carica i moduli da Supabase (filtrati per corso)
   React.useEffect(() => {
@@ -1094,6 +1111,22 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: 
       const allModules = await getModules(courseId);
       setModules(allModules);
     }
+  };
+  
+  // Modifica sezione di un modulo
+  const handleUpdateSection = async (id: string) => {
+    const moduleToUpdate = modules.find(m => m.id === id);
+    if (!moduleToUpdate) return;
+    
+    const { saveModule } = await import('@/services/moduliStorage');
+    const updatedModule = { ...moduleToUpdate, section: newSection || undefined };
+    await saveModule(updatedModule, courseId);
+    
+    // Ricarica moduli
+    const allModules = await getModules(courseId);
+    setModules(allModules);
+    setEditingSectionId(null);
+    setNewSection('');
   };
 
   // Scarica il JSON del modulo
@@ -1123,6 +1156,7 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: 
     stato: 'pubblicato',
     icon: m.icon,
     hasNoteDocente: m.slides?.some(s => s.noteDocente) || false,
+    section: m.section || '',
   }));
 
   return (
@@ -1141,6 +1175,7 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: 
           <thead className="bg-gray-50">
             <tr>
               <th className="text-left p-4 font-semibold text-gray-600">Modulo</th>
+              <th className="text-center p-4 font-semibold text-gray-600">Sezione</th>
               <th className="text-center p-4 font-semibold text-gray-600">Slide</th>
               <th className="text-center p-4 font-semibold text-gray-600">Video</th>
               <th className="text-center p-4 font-semibold text-gray-600">Articoli</th>
@@ -1151,13 +1186,13 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: 
           <tbody>
             {isLoading ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-gray-500">
+                <td colSpan={7} className="p-8 text-center text-gray-500">
                   Caricamento moduli...
                 </td>
               </tr>
             ) : allModules.length === 0 ? (
               <tr>
-                <td colSpan={6} className="p-8 text-center text-gray-500">
+                <td colSpan={7} className="p-8 text-center text-gray-500">
                   Nessun modulo trovato
                 </td>
               </tr>
@@ -1172,6 +1207,45 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: 
                         <div className="text-xs text-gray-500">ID: {modulo.id}</div>
                       </div>
                     </div>
+                  </td>
+                  <td className="p-4 text-center">
+                    {editingSectionId === modulo.id ? (
+                      <div className="flex items-center gap-1">
+                        <select
+                          value={newSection}
+                          onChange={(e) => setNewSection(e.target.value)}
+                          className="text-xs px-2 py-1 border rounded"
+                          autoFocus
+                        >
+                          <option value="">Nessuna</option>
+                          {SECTION_OPTIONS.filter(s => s).map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                        <button
+                          onClick={() => handleUpdateSection(modulo.id)}
+                          className="text-emerald-600 hover:text-emerald-700 text-sm"
+                          title="Salva"
+                        >
+                          ✓
+                        </button>
+                        <button
+                          onClick={() => { setEditingSectionId(null); setNewSection(''); }}
+                          className="text-gray-400 hover:text-gray-600 text-sm"
+                          title="Annulla"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setEditingSectionId(modulo.id); setNewSection(modulo.section); }}
+                        className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 transition-colors"
+                        title="Clicca per modificare"
+                      >
+                        {modulo.section || '—'}
+                      </button>
+                    )}
                   </td>
                   <td className="p-4 text-center">
                     <span className="font-semibold text-gray-800">{modulo.slides}</span>

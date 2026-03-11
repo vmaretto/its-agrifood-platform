@@ -111,7 +111,20 @@ export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCanc
 
   // Section state
   const [selectedSection, setSelectedSection] = useState('');
-  const AVAILABLE_SECTIONS = ['', 'FoodTech Trend', 'Blockchain', 'Sostenibilità', 'Marketing'];
+  const [customSection, setCustomSection] = useState('');
+  const AVAILABLE_SECTIONS = [
+    '', 
+    'Intelligenza Artificiale', 
+    'Blockchain', 
+    'IoT e Sensori',
+    'Sostenibilità',
+    'FoodTech Trend', 
+    'Marketing',
+    'Realtà Virtuale/Aumentata',
+    'Big Data e Analytics',
+    'Automazione',
+    '__custom__' // Opzione per sezione personalizzata
+  ];
 
   // Load existing module for editing (dynamic or static)
   useEffect(() => {
@@ -494,9 +507,14 @@ export default function AdminNuovoModulo({ editModuleId, onModuleCreated, onCanc
 
   const saveGeneratedModule = async () => {
     if (generatedModule) {
+      // Usa la sezione personalizzata se selezionata, altrimenti quella dal dropdown
+      const finalSection = selectedSection === '__custom__' 
+        ? customSection.trim() 
+        : selectedSection;
+      
       const moduleToSave = {
         ...generatedModule,
-        section: selectedSection || undefined
+        section: finalSection || undefined
       };
       await saveModule(moduleToSave, courseId);
       onModuleCreated?.(moduleToSave);
@@ -1458,7 +1476,7 @@ Testo dello speech...
                 {/* Section Selector */}
                 <div className="mt-6 mb-4">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    📂 Sezione (opzionale)
+                    📂 Categoria/Sezione (per raggruppare i moduli)
                   </label>
                   <select
                     value={selectedSection}
@@ -1466,10 +1484,22 @@ Testo dello speech...
                     className="w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   >
                     <option value="">Nessuna sezione</option>
-                    {AVAILABLE_SECTIONS.filter(s => s).map(section => (
+                    {AVAILABLE_SECTIONS.filter(s => s && s !== '__custom__').map(section => (
                       <option key={section} value={section}>{section}</option>
                     ))}
+                    <option value="__custom__">✏️ Altra (inserisci manualmente)</option>
                   </select>
+                  
+                  {selectedSection === '__custom__' && (
+                    <input
+                      type="text"
+                      value={customSection}
+                      onChange={(e) => setCustomSection(e.target.value)}
+                      placeholder="Nome della sezione..."
+                      className="w-full mt-2 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    />
+                  )}
+                  
                   <p className="text-xs text-gray-500 mt-1">
                     I moduli della stessa sezione saranno raggruppati nella vista percorso
                   </p>
