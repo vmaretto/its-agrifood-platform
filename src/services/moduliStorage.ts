@@ -51,6 +51,13 @@ export async function getModules(courseId?: string): Promise<ModuleJSON[]> {
 
   try {
     const modules = await getModulesFromSupabase(courseId);
+    
+    // Se filtriamo per corso, restituisci il risultato anche se vuoto
+    // (non fare fallback a localStorage che non filtra)
+    if (courseId) {
+      return modules;
+    }
+    
     if (modules.length > 0) {
       modulesCache = modules;
       cacheTimestamp = Date.now();
@@ -60,8 +67,12 @@ export async function getModules(courseId?: string): Promise<ModuleJSON[]> {
     console.warn('Failed to fetch from Supabase, using localStorage:', err);
   }
 
-  // Fallback a localStorage
-  return getModulesFromLocalStorage();
+  // Fallback a localStorage (solo se non filtriamo per corso)
+  if (!courseId) {
+    return getModulesFromLocalStorage();
+  }
+  
+  return [];
 }
 
 // Ottieni un modulo specifico
