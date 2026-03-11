@@ -54,7 +54,7 @@ const HomeDashboard: React.FC<HomeDashboardProps> = ({
           setUserBadges(uBadges);
 
           // Carica progresso
-          const progress = await getUserProgressSummary(currentUser.id);
+          const progress = await getUserProgressSummary(currentUser.id, courseId);
           setProgressSummary(progress);
         }
 

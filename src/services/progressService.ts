@@ -301,15 +301,18 @@ export async function saveQuizProgress(
 // USER PROGRESS SUMMARY
 // ============================================
 
-export async function getUserProgressSummary(userId: string): Promise<UserProgressSummary> {
-  // Get all user progress
-  const { data: progressData, error } = await supabase
-    .from('user_progress')
-    .select('*')
-    .eq('user_id', userId);
+export async function getUserProgressSummary(userId: string, courseId?: string): Promise<UserProgressSummary> {
+  // Get modules for the course (or all if no courseId)
+  let modulesQuery = supabase.from('modules').select('id');
+  if (courseId) {
+    modulesQuery = modulesQuery.eq('course_id', courseId);
+  }
+  const { data: modulesData } = await modulesQuery;
+  const courseModuleIds = modulesData?.map(m => m.id) || [];
+  const totalModules = courseModuleIds.length;
 
-  if (error) {
-    console.error('Error fetching user progress summary:', error);
+  // If course has no modules, return empty
+  if (totalModules === 0) {
     return {
       total_modules: 0,
       completed_modules: 0,
@@ -319,10 +322,23 @@ export async function getUserProgressSummary(userId: string): Promise<UserProgre
     };
   }
 
-  // Get total modules
-  const { count: totalModules } = await supabase
-    .from('modules')
-    .select('*', { count: 'exact', head: true });
+  // Get user progress only for course modules
+  const { data: progressData, error } = await supabase
+    .from('user_progress')
+    .select('*')
+    .eq('user_id', userId)
+    .in('module_id', courseModuleIds);
+
+  if (error) {
+    console.error('Error fetching user progress summary:', error);
+    return {
+      total_modules: totalModules,
+      completed_modules: 0,
+      total_slides_viewed: 0,
+      total_quizzes_correct: 0,
+      overall_progress: 0
+    };
+  }
 
   const progress = progressData || [];
   const completedModules = progress.filter(p => p.is_completed).length;
@@ -333,7 +349,7 @@ export async function getUserProgressSummary(userId: string): Promise<UserProgre
   }, 0);
 
   return {
-    total_modules: totalModules || 0,
+    total_modules: totalModules,
     completed_modules: completedModules,
     total_slides_viewed: totalSlidesViewed,
     total_quizzes_correct: totalQuizzesCorrect,
