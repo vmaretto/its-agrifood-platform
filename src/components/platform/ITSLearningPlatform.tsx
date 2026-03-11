@@ -1159,147 +1159,175 @@ const AdminContenuti = ({ setActiveModule, onRefresh, onEditModule, courseId }: 
     section: m.section || '',
   }));
 
+  // Raggruppa moduli per sezione
+  const groupedModules = allModules.reduce((acc, modulo) => {
+    const section = modulo.section || 'Senza sezione';
+    if (!acc[section]) acc[section] = [];
+    acc[section].push(modulo);
+    return acc;
+  }, {} as Record<string, typeof allModules>);
+
+  // Ordina le sezioni (Senza sezione alla fine)
+  const sortedSections = Object.keys(groupedModules).sort((a, b) => {
+    if (a === 'Senza sezione') return 1;
+    if (b === 'Senza sezione') return -1;
+    return a.localeCompare(b);
+  });
+
+  // Colori per le sezioni
+  const sectionColors: Record<string, { bg: string; border: string; text: string }> = {
+    'Intelligenza Artificiale': { bg: 'bg-purple-50', border: 'border-purple-300', text: 'text-purple-700' },
+    'Blockchain': { bg: 'bg-blue-50', border: 'border-blue-300', text: 'text-blue-700' },
+    'IoT e Sensori': { bg: 'bg-cyan-50', border: 'border-cyan-300', text: 'text-cyan-700' },
+    'Sostenibilità': { bg: 'bg-green-50', border: 'border-green-300', text: 'text-green-700' },
+    'FoodTech Trend': { bg: 'bg-orange-50', border: 'border-orange-300', text: 'text-orange-700' },
+    'Marketing': { bg: 'bg-pink-50', border: 'border-pink-300', text: 'text-pink-700' },
+    'Realtà Virtuale/Aumentata': { bg: 'bg-indigo-50', border: 'border-indigo-300', text: 'text-indigo-700' },
+    'Big Data e Analytics': { bg: 'bg-amber-50', border: 'border-amber-300', text: 'text-amber-700' },
+    'Automazione': { bg: 'bg-rose-50', border: 'border-rose-300', text: 'text-rose-700' },
+    'Senza sezione': { bg: 'bg-gray-50', border: 'border-gray-300', text: 'text-gray-600' },
+  };
+
+  const getColors = (section: string) => sectionColors[section] || sectionColors['Senza sezione'];
+
   return (
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="text-2xl font-bold text-gray-800">📝 Gestione Contenuti</h1>
           <p className="text-gray-500">
-            {isLoading ? 'Caricamento...' : `${allModules.length} moduli totali`}
+            {isLoading ? 'Caricamento...' : `${allModules.length} moduli in ${sortedSections.length} sezioni`}
           </p>
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="text-left p-4 font-semibold text-gray-600">Modulo</th>
-              <th className="text-center p-4 font-semibold text-gray-600">Sezione</th>
-              <th className="text-center p-4 font-semibold text-gray-600">Slide</th>
-              <th className="text-center p-4 font-semibold text-gray-600">Video</th>
-              <th className="text-center p-4 font-semibold text-gray-600">Articoli</th>
-              <th className="text-center p-4 font-semibold text-gray-600">Note</th>
-              <th className="text-right p-4 font-semibold text-gray-600">Azioni</th>
-            </tr>
-          </thead>
-          <tbody>
-            {isLoading ? (
-              <tr>
-                <td colSpan={7} className="p-8 text-center text-gray-500">
-                  Caricamento moduli...
-                </td>
-              </tr>
-            ) : allModules.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="p-8 text-center text-gray-500">
-                  Nessun modulo trovato
-                </td>
-              </tr>
-            ) : (
-              allModules.map((modulo, idx) => (
-                <tr key={idx} className="border-t border-gray-100 hover:bg-gray-50">
-                  <td className="p-4">
-                    <div className="flex items-center gap-2">
-                      {modulo.icon && <span>{modulo.icon}</span>}
-                      <div>
-                        <div className="font-medium text-gray-800">{modulo.nome}</div>
-                        <div className="text-xs text-gray-500">ID: {modulo.id}</div>
+      {isLoading ? (
+        <div className="text-center py-12 text-gray-500">Caricamento moduli...</div>
+      ) : allModules.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">Nessun modulo trovato</div>
+      ) : (
+        <div className="space-y-6">
+          {sortedSections.map(section => {
+            const colors = getColors(section);
+            const moduliSezione = groupedModules[section];
+            
+            return (
+              <div key={section} className={`${colors.bg} ${colors.border} border-2 rounded-2xl overflow-hidden`}>
+                {/* Header sezione */}
+                <div className={`px-6 py-4 ${colors.bg} border-b ${colors.border}`}>
+                  <h2 className={`text-lg font-bold ${colors.text}`}>
+                    📂 {section}
+                    <span className="ml-2 text-sm font-normal opacity-70">
+                      ({moduliSezione.length} {moduliSezione.length === 1 ? 'modulo' : 'moduli'})
+                    </span>
+                  </h2>
+                </div>
+                
+                {/* Lista moduli */}
+                <div className="divide-y divide-gray-200">
+                  {moduliSezione.map((modulo, idx) => (
+                    <div key={modulo.id} className="bg-white px-6 py-4 flex items-center gap-4">
+                      {/* Icona e nome */}
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <span className="text-2xl">{modulo.icon || '📚'}</span>
+                        <div className="min-w-0">
+                          <div className="font-medium text-gray-800 truncate">{modulo.nome}</div>
+                          <div className="text-xs text-gray-500">ID: {modulo.id}</div>
+                        </div>
+                      </div>
+                      
+                      {/* Stats */}
+                      <div className="flex items-center gap-4 text-sm text-gray-600">
+                        <span title="Slide">📄 {modulo.slides}</span>
+                        <span title="Video">🎥 {modulo.video}</span>
+                        <span title="Articoli">📰 {modulo.articoli}</span>
+                        {modulo.hasNoteDocente ? (
+                          <span title="Note docente" className="text-emerald-500">✅</span>
+                        ) : (
+                          <span title="Nessuna nota" className="text-gray-300">○</span>
+                        )}
+                      </div>
+                      
+                      {/* Modifica sezione inline */}
+                      <div className="w-40">
+                        {editingSectionId === modulo.id ? (
+                          <div className="flex items-center gap-1">
+                            <select
+                              value={newSection}
+                              onChange={(e) => setNewSection(e.target.value)}
+                              className="text-xs px-2 py-1 border rounded flex-1"
+                              autoFocus
+                            >
+                              <option value="">Nessuna</option>
+                              {SECTION_OPTIONS.filter(s => s).map(s => (
+                                <option key={s} value={s}>{s}</option>
+                              ))}
+                            </select>
+                            <button
+                              onClick={() => handleUpdateSection(modulo.id)}
+                              className="text-emerald-600 hover:text-emerald-700"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => { setEditingSectionId(null); setNewSection(''); }}
+                              className="text-gray-400 hover:text-gray-600"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => { setEditingSectionId(modulo.id); setNewSection(modulo.section); }}
+                            className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 transition-colors w-full text-left truncate"
+                            title="Clicca per cambiare sezione"
+                          >
+                            🏷️ {modulo.section || 'Assegna sezione'}
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* Azioni */}
+                      <div className="flex items-center gap-1">
+                        {setActiveModule && (
+                          <button
+                            onClick={() => setActiveModule(modulo.id)}
+                            className="px-2 py-1 text-xs text-indigo-600 hover:bg-indigo-50 rounded transition-colors"
+                          >
+                            Apri
+                          </button>
+                        )}
+                        {onEditModule && (
+                          <button
+                            onClick={() => onEditModule(modulo.id)}
+                            className="px-2 py-1 text-xs text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                          >
+                            Modifica
+                          </button>
+                        )}
+                        <button
+                          onClick={() => handleDownloadModule(modulo.id)}
+                          className="px-2 py-1 text-xs text-emerald-600 hover:bg-emerald-50 rounded transition-colors"
+                          title="Scarica JSON"
+                        >
+                          📥
+                        </button>
+                        <button
+                          onClick={() => handleDeleteModule(modulo.id)}
+                          className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 rounded transition-colors"
+                          title="Elimina"
+                        >
+                          🗑️
+                        </button>
                       </div>
                     </div>
-                  </td>
-                  <td className="p-4 text-center">
-                    {editingSectionId === modulo.id ? (
-                      <div className="flex items-center gap-1">
-                        <select
-                          value={newSection}
-                          onChange={(e) => setNewSection(e.target.value)}
-                          className="text-xs px-2 py-1 border rounded"
-                          autoFocus
-                        >
-                          <option value="">Nessuna</option>
-                          {SECTION_OPTIONS.filter(s => s).map(s => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                        <button
-                          onClick={() => handleUpdateSection(modulo.id)}
-                          className="text-emerald-600 hover:text-emerald-700 text-sm"
-                          title="Salva"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          onClick={() => { setEditingSectionId(null); setNewSection(''); }}
-                          className="text-gray-400 hover:text-gray-600 text-sm"
-                          title="Annulla"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={() => { setEditingSectionId(modulo.id); setNewSection(modulo.section); }}
-                        className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded text-gray-600 transition-colors"
-                        title="Clicca per modificare"
-                      >
-                        {modulo.section || '—'}
-                      </button>
-                    )}
-                  </td>
-                  <td className="p-4 text-center">
-                    <span className="font-semibold text-gray-800">{modulo.slides}</span>
-                  </td>
-                  <td className="p-4 text-center">
-                    <span className="font-semibold text-gray-800">{modulo.video}</span>
-                  </td>
-                  <td className="p-4 text-center">
-                    <span className="font-semibold text-gray-800">{modulo.articoli}</span>
-                  </td>
-                  <td className="p-4 text-center">
-                    {modulo.hasNoteDocente ? (
-                      <span className="text-emerald-500" title="Note docente presenti">✅</span>
-                    ) : (
-                      <span className="text-gray-300" title="Nessuna nota">-</span>
-                    )}
-                  </td>
-                  <td className="p-4 text-right">
-                    {setActiveModule && (
-                      <button
-                        onClick={() => setActiveModule(modulo.id)}
-                        className="px-3 py-1 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
-                      >
-                        Apri
-                      </button>
-                    )}
-                    {onEditModule && (
-                      <button
-                        onClick={() => onEditModule(modulo.id)}
-                        className="px-3 py-1 text-sm text-purple-600 hover:bg-purple-50 rounded-lg transition-colors ml-2"
-                      >
-                        Modifica
-                      </button>
-                    )}
-                    <button
-                      onClick={() => handleDownloadModule(modulo.id)}
-                      className="px-3 py-1 text-sm text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors ml-2"
-                      title="Scarica JSON"
-                    >
-                      📥 JSON
-                    </button>
-                    <button
-                      onClick={() => handleDeleteModule(modulo.id)}
-                      className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors ml-2"
-                    >
-                      Elimina
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
