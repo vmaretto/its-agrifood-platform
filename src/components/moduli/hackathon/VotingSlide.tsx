@@ -26,6 +26,7 @@ interface VotingSlideProps {
   hackathonId?: string;
   isAdmin?: boolean;
   currentUser?: UserProfile | null;
+  courseId?: string;
 }
 
 interface VotingSystem {
@@ -42,7 +43,7 @@ interface TeamVotes {
   [criterionId: string]: number;
 }
 
-export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', isAdmin = false, currentUser }: VotingSlideProps) {
+export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', isAdmin = false, currentUser, courseId }: VotingSlideProps) {
   const vc = slide.visualContent || {};
   const votingSystem = vc.votingSystem as VotingSystem | undefined;
   const votingCriteria = vc.votingCriteria as VotingCriterion[] | undefined;
@@ -75,8 +76,8 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
   // Carica dati iniziali
   useEffect(() => {
     const loadData = async () => {
-      // Carica squadre
-      const teamsData = await getTeams();
+      // Carica squadre (filtrate per corso se specificato)
+      const teamsData = await getTeams(courseId);
       setTeams(teamsData);
 
       // Carica giurati

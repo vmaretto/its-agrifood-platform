@@ -81,7 +81,7 @@ export default function ModuloHackathon({
       case 'teams':
         return <TeamsSlide slide={slide} courseId={courseId} />;
       case 'voting':
-        return <VotingSlide slide={slide} hackathonId={module.id} isAdmin={isAdmin} currentUser={currentUser} />;
+        return <VotingSlide slide={slide} hackathonId={module.id} isAdmin={isAdmin} currentUser={currentUser} courseId={courseId} />;
       case 'timeline':
         return <TimelineSlide slide={slide} config={config!} />;
       case 'leaderboard':
