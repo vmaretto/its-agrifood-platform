@@ -72,6 +72,10 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
 
   const isTeacher = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
   const voterType = isTeacher ? (selectedJuryMember ? 'jury' : 'teacher') : 'student';
+  
+  // Hackathon con votazioni chiuse
+  const closedHackathons = ['hackathon-agrifuture-2024'];
+  const isVotingClosed = closedHackathons.includes(hackathonId);
 
   // Carica dati iniziali
   useEffect(() => {
@@ -317,6 +321,15 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
       {/* TAB: VOTA */}
       {activeTab === 'vote' && (
         <div className="space-y-6">
+          {/* Votazioni chiuse per studenti */}
+          {isVotingClosed && !isTeacher ? (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center">
+              <div className="text-4xl mb-4">🗳️</div>
+              <h3 className="text-xl font-bold text-amber-800 mb-2">Votazioni chiuse!</h3>
+              <p className="text-amber-600">Le votazioni per questo hackathon sono terminate. I risultati saranno annunciati a breve!</p>
+            </div>
+          ) : (
+          <>
           {/* Intro */}
           {vc.introParagraph && (
             <p className="text-lg text-gray-600">{String(vc.introParagraph)}</p>
@@ -521,6 +534,8 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
                 </div>
               )}
             </>
+          )}
+          </>
           )}
         </div>
       )}
