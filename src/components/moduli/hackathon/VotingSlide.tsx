@@ -288,16 +288,18 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
         >
           🗳️ Vota
         </button>
-        <button
-          onClick={() => setActiveTab('results')}
-          className={`px-4 py-2 font-medium transition-colors ${
-            activeTab === 'results'
-              ? 'text-indigo-600 border-b-2 border-indigo-600'
-              : 'text-gray-500 hover:text-gray-700'
-          }`}
-        >
-          📊 Risultati
-        </button>
+        {isTeacher && (
+          <button
+            onClick={() => setActiveTab('results')}
+            className={`px-4 py-2 font-medium transition-colors ${
+              activeTab === 'results'
+                ? 'text-indigo-600 border-b-2 border-indigo-600'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            📊 Risultati
+          </button>
+        )}
         {isTeacher && (
           <button
             onClick={() => setActiveTab('jury')}
@@ -523,8 +525,8 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
         </div>
       )}
 
-      {/* TAB: RISULTATI */}
-      {activeTab === 'results' && (
+      {/* TAB: RISULTATI (solo docenti) */}
+      {activeTab === 'results' && isTeacher && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-xl font-bold text-gray-800">
