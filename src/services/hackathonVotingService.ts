@@ -171,13 +171,19 @@ export async function hasStudentVoted(
   return { hasVoted: false, votedTeamId: null };
 }
 
-// Ottieni il riepilogo dei voti per tutte le squadre
-export async function getVotesSummary(hackathonId: string): Promise<TeamVotesSummary[]> {
-  // Prima ottieni tutte le squadre
-  const { data: teams, error: teamsError } = await supabase
+// Ottieni il riepilogo dei voti per le squadre (filtrate per corso se specificato)
+export async function getVotesSummary(hackathonId: string, courseId?: string): Promise<TeamVotesSummary[]> {
+  // Prima ottieni le squadre (filtrate per corso se specificato)
+  let query = supabase
     .from('teams')
-    .select('id, name, color')
+    .select('id, name, color, course_id')
     .order('name');
+  
+  if (courseId) {
+    query = query.eq('course_id', courseId);
+  }
+  
+  const { data: teams, error: teamsError } = await query;
 
   if (teamsError || !teams) {
     console.error('Error fetching teams:', teamsError);
@@ -422,7 +428,7 @@ export async function finalizeHackathon(
 // ============================================
 
 // Calcola la classifica finale
-export async function getFinalRankings(hackathonId: string): Promise<TeamVotesSummary[]> {
-  const summary = await getVotesSummary(hackathonId);
+export async function getFinalRankings(hackathonId: string, courseId?: string): Promise<TeamVotesSummary[]> {
+  const summary = await getVotesSummary(hackathonId, courseId);
   return summary.sort((a, b) => b.total_points - a.total_points);
 }

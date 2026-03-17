@@ -84,8 +84,8 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
       const juryData = await getJuryMembers(hackathonId);
       setJuryMembers(juryData);
 
-      // Carica riepilogo voti
-      const summary = await getVotesSummary(hackathonId);
+      // Carica riepilogo voti (filtrato per corso)
+      const summary = await getVotesSummary(hackathonId, courseId);
       setVotesSummary(summary);
 
       // Controlla se hackathon è già finalizzato
@@ -183,8 +183,8 @@ export function VotingSlide({ slide, hackathonId = 'hackathon-winetech-2024', is
         setVotedTeamId(selectedTeam.id);
       }
 
-      // Ricarica riepilogo
-      const summary = await getVotesSummary(hackathonId);
+      // Ricarica riepilogo (filtrato per corso)
+      const summary = await getVotesSummary(hackathonId, courseId);
       setVotesSummary(summary);
 
       // Ricarica voti esistenti
