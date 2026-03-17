@@ -85,7 +85,7 @@ export default function ModuloHackathon({
       case 'timeline':
         return <TimelineSlide slide={slide} config={config!} />;
       case 'leaderboard':
-        return <LeaderboardSlide slide={slide} courseId={courseId} />;
+        return <LeaderboardSlide slide={slide} courseId={courseId} hackathonId={module.id} currentUser={currentUser} />;
       default:
         // Fallback: mostra contenuto testuale se presente
         return (

@@ -3,10 +3,14 @@
 import React, { useState, useEffect } from 'react';
 import { SlideJSON, LeaderboardStanding, HackathonBadge } from '@/types/module';
 import { getTeams, Team } from '@/services/teamsService';
+import { getVotesSummary, TeamVotesSummary } from '@/services/hackathonVotingService';
+import { UserProfile } from '@/services/authService';
 
 interface LeaderboardSlideProps {
   slide: SlideJSON;
   courseId?: string;
+  hackathonId?: string;
+  currentUser?: UserProfile | null;
 }
 
 interface LeaderboardConfig {
@@ -24,7 +28,7 @@ interface PointsBreakdown {
   specialAwards: number;
 }
 
-export function LeaderboardSlide({ slide, courseId }: LeaderboardSlideProps) {
+export function LeaderboardSlide({ slide, courseId, hackathonId = 'hackathon-agrifuture-2024', currentUser }: LeaderboardSlideProps) {
   const vc = slide.visualContent || {};
   const leaderboardConfig = vc.leaderboardConfig as LeaderboardConfig | undefined;
   const staticStandings = vc.currentStandings as LeaderboardStanding[] | undefined;
@@ -32,44 +36,60 @@ export function LeaderboardSlide({ slide, courseId }: LeaderboardSlideProps) {
   const possibleBadges = vc.possibleBadges as HackathonBadge[] | undefined;
 
   const [liveTeams, setLiveTeams] = useState<Team[]>([]);
+  const [hackathonVotes, setHackathonVotes] = useState<TeamVotesSummary[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [animatedPoints, setAnimatedPoints] = useState<Record<string, number>>({});
 
+  const isTeacher = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
+
   // Carica dati live
   useEffect(() => {
-    const loadTeams = async () => {
+    const loadData = async () => {
       setIsLoading(true);
       try {
         const teams = await getTeams(courseId);
         setLiveTeams(teams);
+        
+        // Carica anche i voti hackathon
+        const votes = await getVotesSummary(hackathonId, courseId);
+        setHackathonVotes(votes);
       } catch (err) {
-        console.error('Error loading teams:', err);
+        console.error('Error loading data:', err);
       }
       setIsLoading(false);
     };
-    loadTeams();
+    loadData();
 
     // Polling ogni 30 secondi
-    const interval = setInterval(loadTeams, 30000);
+    const interval = setInterval(loadData, 30000);
     return () => clearInterval(interval);
-  }, [courseId]);
+  }, [courseId, hackathonId]);
 
   // Se abbiamo courseId, usa solo i dati dal DB; altrimenti merge con statici
   const standings: LeaderboardStanding[] = courseId && liveTeams.length > 0
-    ? liveTeams.map((team, idx) => ({
-        rank: idx + 1,
-        team: team.name,
-        prePoints: team.points || 0,
-        hackPoints: 0,
-        total: team.points || 0,
-        badges: []
-      })).sort((a, b) => b.total - a.total).map((s, idx) => ({ ...s, rank: idx + 1 }))
+    ? liveTeams.map((team) => {
+        // Trova i punti hackathon per questa squadra
+        const hackVotes = hackathonVotes.find(v => v.team_id === team.id);
+        const hackPoints = hackVotes?.total_points || 0;
+        const prePoints = team.points || 0;
+        return {
+          rank: 0,
+          team: team.name,
+          prePoints: prePoints,
+          hackPoints: hackPoints,
+          total: prePoints + hackPoints,
+          badges: []
+        };
+      }).sort((a, b) => b.total - a.total).map((s, idx) => ({ ...s, rank: idx + 1 }))
     : staticStandings?.map(standing => {
         const liveTeam = liveTeams.find(t => t.name === standing.team);
+        const hackVotes = hackathonVotes.find(v => v.team_name === standing.team);
+        const hackPoints = hackVotes?.total_points || standing.hackPoints;
         return {
           ...standing,
           prePoints: liveTeam?.points ?? standing.prePoints,
-          total: (liveTeam?.points ?? standing.prePoints) + standing.hackPoints,
+          hackPoints: hackPoints,
+          total: (liveTeam?.points ?? standing.prePoints) + hackPoints,
         };
       }).sort((a, b) => b.total - a.total).map((s, idx) => ({ ...s, rank: idx + 1 })) || [];
 
@@ -100,6 +120,17 @@ export function LeaderboardSlide({ slide, courseId }: LeaderboardSlideProps) {
     if (rank === 3) return '🥉';
     return `#${rank}`;
   };
+
+  // Nascondi agli studenti
+  if (!isTeacher) {
+    return (
+      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-8 text-center">
+        <div className="text-4xl mb-4">🏆</div>
+        <h3 className="text-xl font-bold text-amber-800 mb-2">Classifica in arrivo!</h3>
+        <p className="text-amber-600">I risultati saranno svelati a breve dal docente.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
